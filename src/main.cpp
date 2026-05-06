@@ -5,8 +5,57 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
 
+#include <string>
+#include <utility>
+#include <vector>
+#include <chrono>
+#include <format>
+
+using datatime = std::chrono::system_clock::time_point;
+
+class Message {
+private:
+    inline static int s_NextID = 0;
+    int m_ID;
+    datatime m_DataTimeSent;
+    std::string m_Content;
+    std::string m_Author;
+public:
+    Message(std::string m_Content, std::string m_Author) : m_Content(std::move(m_Content)), m_Author(std::move(m_Author)) {
+        this->m_DataTimeSent = std::chrono::system_clock::now();
+        this->m_ID = s_NextID++;
+    }
+
+    std::string GetDataTime() {
+        return std::format("{:%Y-%m-%d %H:%M:%S}", this->m_DataTimeSent);
+    }
+
+    std::string& GetAuthor() {
+        return this->m_Author;
+    }
+
+    std::string& GetContent() {
+        return this->m_Content;
+    }
+
+    int GetID() const {
+        return this->m_ID;
+    }
+};
+
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
+
+std::vector<Message> messages = {
+    {"Message 1", "User 1"},
+    {"Message 2", "User 2"},
+    {"Message 3", "User 1"},
+    {"Message 4", "User 2"},
+    {"Message 5", "User 3"},
+    {"Message 6", "User 1"},
+    {"Message 7", "User 2"},
+};
+static char message_buffer[1024] = "";
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     // Initializing window and renderer with SDL3
@@ -42,7 +91,28 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         ImGui::SetNextWindowPos(ImVec2((static_cast<float>(main_window_w) / 4.0f), 0.0f));
         ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 2.0f, static_cast<float>(main_window_h)));
         if (ImGui::Begin("EchoHubContent", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-            ImGui::Text("Content");
+            if (ImGui::BeginChild("Messages", ImVec2(0.0f, -60.0f), false)) {
+                for (Message& message : messages) {
+                    if (ImGui::BeginChild(std::format("Message-{}", message.GetID()).c_str(), ImVec2(0.0f, 50.0f), true)) {
+                        ImGui::Text("%s", message.GetAuthor().c_str());
+                        ImGui::SameLine();
+                        ImGui::Text("%s", message.GetDataTime().c_str());
+                        ImGui::Text("%s", message.GetContent().c_str());
+                    } ImGui::EndChild();
+                }
+            }
+            ImGui::EndChild();
+            if (ImGui::BeginChild("NewMessageInput", ImVec2(0.0f, 45), false)) {
+                if (ImGui::InputText("##message_input", message_buffer, IM_ARRAYSIZE(message_buffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
+                    // Message is being sent
+                    SDL_Log("%s", message_buffer);
+                    message_buffer[0] = '\0';
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Send")) {
+                    SDL_Log("%s", message_buffer);
+                }
+            } ImGui::EndChild();
         } ImGui::End();
         ImGui::SameLine();
         ImGui::SetNextWindowPos(ImVec2((static_cast<float>(main_window_w) / 4.0f * 3.0f), 0.0f));
