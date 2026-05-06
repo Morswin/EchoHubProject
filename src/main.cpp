@@ -28,14 +28,29 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     ImGui::NewFrame();
 
     // The actual contents of the window
-    ImGui::Begin("EchoHub Debug");
-    ImGui::Text("Welcome in EchoHub Project!");
-    if (ImGui::Button("Click me!")) {
-        SDL_Log("Button clicked!");
-    }
-    static float f = 0.0f;
-    ImGui::SliderFloat("slider", &f, 0.0f, 1.0f);
-    ImGui::End();
+    int main_window_w, main_window_h;
+    SDL_GetWindowSize(window, &main_window_w, &main_window_h);
+    ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w), static_cast<float>(main_window_h)));
+    ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+    if (ImGui::Begin("EchoHubRoot", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
+        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+        ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 4.0f, static_cast<float>(main_window_h)));
+        if (ImGui::Begin("EchoHubNavigation", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+            ImGui::Text("Navigation");
+        } ImGui::End();
+        ImGui::SameLine();
+        ImGui::SetNextWindowPos(ImVec2((static_cast<float>(main_window_w) / 4.0f), 0.0f));
+        ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 2.0f, static_cast<float>(main_window_h)));
+        if (ImGui::Begin("EchoHubContent", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+            ImGui::Text("Content");
+        } ImGui::End();
+        ImGui::SameLine();
+        ImGui::SetNextWindowPos(ImVec2((static_cast<float>(main_window_w) / 4.0f * 3.0f), 0.0f));
+        ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 4.0f, static_cast<float>(main_window_h)));
+        if (ImGui::Begin("EchoHubDetails", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+            ImGui::Text("Details");
+        } ImGui::End();
+    } ImGui::End();
 
     // Rendering background
     SDL_SetRenderDrawColor(renderer, 33, 33, 33, 255);
