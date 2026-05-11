@@ -4,6 +4,8 @@ project(EchoHubProject)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+include(FetchContent)
+
 # SDL
 add_subdirectory(external/SDL)
 
@@ -24,12 +26,42 @@ target_include_directories(imgui PUBLIC
         ${IMGUI_DIR}/backends
 )
 
+# Asio
+FetchContent_Declare(
+        asio
+        GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
+        GIT_TAG asio-1-30-2
+)
+FetchContent_MakeAvailable(asio)
+FetchContent_GetProperties(asio SOURCE_DIR ASIO_SOURCE_DIR)
+add_library(asio_lib INTERFACE)
+add_library(asio::asio ALIAS asio_lib)
+target_include_directories(asio_lib INTERFACE ${ASIO_SOURCE_DIR}/asio/include)
+target_compile_definitions(asio_lib INTERFACE ASIO_STANDALONE)
+
+# Opus
+FetchContent_Declare(
+        opus
+        GIT_REPOSITORY https://github.com/xiph/opus.git
+        GIT_TAG v1.5.2
+)
+set(OPUS_BUILD_PROGRAMS OFF CACHE INTERNAL "")
+set(OPUS_BUILD_TESTING OFF CACHE INTERNAL "")
+FetchContent_MakeAvailable(opus)
+
 # Our executable
 add_executable(echo_hub src/main.cpp)
 
 # Linking
 target_link_libraries(imgui PRIVATE SDL3::SDL3-shared)
-target_link_libraries(echo_hub PRIVATE imgui SDL3::SDL3-shared)
+find_package(Threads REQUIRED)
+target_link_libraries(echo_hub PRIVATE
+        imgui
+        SDL3::SDL3-shared
+        asio::asio
+        opus
+        Threads::Threads
+)
 
 # Copying dynamic libraries
 if(WIN32)
