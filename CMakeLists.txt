@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.3)
+cmake_minimum_required(VERSION 4.2)
 project(EchoHubProject)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -29,4 +29,13 @@ add_executable(echo_hub src/main.cpp)
 
 # Linking
 target_link_libraries(imgui PRIVATE SDL3::SDL3-shared)
-target_link_libraries(echo_hub PRIVATE imgui)
+target_link_libraries(echo_hub PRIVATE imgui SDL3::SDL3-shared)
+
+# Copying dynamic libraries
+if(WIN32)
+    add_custom_command(TARGET echo_hub POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:SDL3::SDL3-shared>
+            $<TARGET_FILE_DIR:echo_hub>
+    )
+endif()
