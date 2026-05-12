@@ -6,42 +6,12 @@
 #include <imgui_impl_sdlrenderer3.h>
 
 #include <string>
-#include <utility>
 #include <vector>
 #include <chrono>
 #include <format>
 
-using datatime = std::chrono::system_clock::time_point;
+#include "message.hpp"
 
-class Message {
-private:
-    inline static int s_NextID = 0;
-    int m_ID;
-    datatime m_DataTimeSent;
-    std::string m_Content;
-    std::string m_Author;
-public:
-    Message(std::string m_Content, std::string m_Author) : m_Content(std::move(m_Content)), m_Author(std::move(m_Author)) {
-        this->m_DataTimeSent = std::chrono::system_clock::now();
-        this->m_ID = s_NextID++;
-    }
-
-    std::string GetDataTime() {
-        return std::format("{:%Y-%m-%d %H:%M:%S}", this->m_DataTimeSent);
-    }
-
-    std::string& GetAuthor() {
-        return this->m_Author;
-    }
-
-    std::string& GetContent() {
-        return this->m_Content;
-    }
-
-    int GetID() const {
-        return this->m_ID;
-    }
-};
 
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;

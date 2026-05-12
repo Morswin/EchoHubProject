@@ -50,7 +50,10 @@ set(OPUS_BUILD_TESTING OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(opus)
 
 # Our executable
-add_executable(echo_hub src/main.cpp)
+add_executable(echo_hub
+        src/main.cpp
+        src/message.cpp
+)
 
 # Linking
 target_link_libraries(imgui PRIVATE SDL3::SDL3-shared)
