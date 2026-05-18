@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discord/TeamSpeak Clone - Makieta Widoków</title>
+    <style>
+        /* RESET I PODSTAWOWE STYLE (Ciemny motyw) */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #1e1f22;
+            color: #dbdee1;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* PANEL NAWIGACJI (Symulator przełączania widoków z aplikacji C++) */
+        #debug-navigation {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #111214;
+            border: 2px solid #5865f2;
+            border-radius: 8px;
+            padding: 10px;
+            z-index: 9999;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            max-width: 220px;
+        }
+        #debug-navigation h4 {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #949ba4;
+            margin-bottom: 8px;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+        .nav-btn {
+            display: block;
+            width: 100%;
+            background-color: #2b2d31;
+            color: #fff;
+            border: none;
+            padding: 6px 10px;
+            margin: 3px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: left;
+            transition: background 0.2s;
+        }
+        .nav-btn:hover {
+            background-color: #35373c;
+        }
+        .nav-btn.active {
+            background-color: #5865f2;
+        }
+
+        /* GŁÓWNY KONTENER APLIKACJI */
+        #app-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* WSPÓLNE STYLE DLA WIDOKÓW PEŁNOEKRANOWYCH / CENTRALNYCH */
+        .view {
+            display: none; /* Domyślnie ukryte, JS pokaże wybrany */
+            width: 100%;
+            height: 100%;
+        }
+        .centered-layout {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #313338;
+        }
+        .card {
+            background-color: #1e1f22;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        h2 {
+            margin-bottom: 20px;
+            color: #fff;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #b5bac1;
+        }
+        input[type="text"], input[type="password"], input[type="email"], select {
+            width: 100%;
+            padding: 10px;
+            background-color: #1e1f22;
+            border: 1px solid #111214;
+            border-radius: 4px;
+            color: #dbdee1;
+            font-size: 14px;
+        }
+        input:focus, select:focus {
+            outline: 1px solid #5865f2;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 10px;
+            background-color: #5865f2;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn-primary:hover { background-color: #4752c4; }
+        .btn-secondary {
+            width: 100%;
+            padding: 10px;
+            background-color: transparent;
+            color: #fff;
+            border: 1px solid #4e5058;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        .btn-secondary:hover { background-color: #35373c; }
+
+        /* WIDOK: CONNECTING_LOADING_VIEW */
+        .spinner {
+            border: 4px solid #2b2d31;
+            border-left-color: #5865f2;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* WIDOKI ZŁOŻONE (HUD / SKOMPLIKOWANE UKŁADY) */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 72px 240px 1fr;
+            height: 100%;
+        }
+
+        /* Kolumna 1: Pasek serwerów (Ikony po lewej) */
+        .server-sidebar {
+            background-color: #1e1f22;
+            padding: 12px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+        .server-icon {
+            width: 48px;
+            height: 48px;
+            background-color: #313338;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: #dbdee1;
+            transition: all 0.2s;
+        }
+        .server-icon:hover, .server-icon.active {
+            border-radius: 16px;
+            background-color: #5865f2;
+            color: #fff;
+        }
+
+        /* Kolumna 2: Pasek podkanałów / listy osób */
+        .sub-sidebar {
+            background-color: #2b2d31;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .sub-sidebar-content { padding: 15px 10px; }
+        .sidebar-header {
+            padding: 12px 10px;
+            border-bottom: 1px solid #1f2023;
+            font-weight: bold;
+            font-size: 15px;
+        }
+        .channel-list-item, .friend-list-item {
+            padding: 6px 8px;
+            border-radius: 4px;
+            margin: 2px 0;
+            cursor: pointer;
+            font-size: 14px;
+            color: #949ba4;
+        }
+        .channel-list-item:hover, .friend-list-item:hover {
+            background-color: #35373c;
+            color: #dbdee1;
+        }
+        .channel-list-item.active {
+            background-color: #404249;
+            color: #fff;
+        }
+
+        /* Dolny panel użytkownika (Microphone/Mute/Deafen) */
+        .user-footer {
+            background-color: #232428;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        /* Kolumna 3: Główny obszar treści (Czat / Lista znajomych) */
+        .main-content-area {
+            background-color: #313338;
+            display: flex;
+            flex-direction: column;
+        }
+        .content-header {
+            height: 48px;
+            border-bottom: 1px solid #1f2023;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            font-weight: bold;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .message {
+            display: flex;
+            flex-direction: column;
+        }
+        .message-author { font-weight: bold; font-size: 14px; color: #fff; margin-bottom: 20px; }
+        .message-author span { font-size: 11px; color: #949ba4; font-weight: normal; margin-left: 8px; }
+        .message-text { font-size: 14px; color: #dbdee1; margin-top: -16px;}
+
+        .chat-input-container {
+            padding: 0 20px 24px 20px;
+        }
+        .chat-input {
+            width: 100%;
+            padding: 12px;
+            background-color: #383a40;
+            border: none;
+            border-radius: 8px;
+            color: #dbdee1;
+        }
+
+        /* WIDOK: FRIENDS_LIST_VIEW (Tabela/Lista) */
+        .friends-grid {
+            padding: 20px;
+        }
+        .friend-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #3f4147;
+            align-items: center;
+        }
+        .status-online { color: #23a55a; font-size: 12px;}
+        .status-offline { color: #80848e; font-size: 12px;}
+
+        /* NAKŁADKI / SYSTEM USTAWIEŃ (USER & SERVER SETTINGS) */
+        .settings-layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            height: 100%;
+            background-color: #313338;
+        }
+        .settings-sidebar {
+            background-color: #2b2d31;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        .settings-sidebar-menu { width: 190px; }
+        .settings-content {
+            padding: 40px;
+            overflow-y: auto;
+            max-width: 600px;
+        }
+        .settings-heading {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+<!-- PANEL STEROWANIA STANAMI (SYMULATOR ENUMA C++) -->
+<div id="debug-navigation">
+    <h4>EViewState Controller</h4>
+    <button class="nav-btn active" onclick="switchView('AUTH_VIEW')">AUTH_VIEW</button>
+    <button class="nav-btn" onclick="switchView('LANDING_VIEW')">LANDING_VIEW</button>
+    <button class="nav-btn" onclick="switchView('FRIENDS_LIST_VIEW')">FRIENDS_LIST_VIEW</button>
+    <button class="nav-btn" onclick="switchView('CONNECT_TO_NEW_SERVER_VIEW')">CONNECT_TO_NEW_SERVER_VIEW</button>
+    <button class="nav-btn" onclick="switchView('CREATE_NEW_SERVER_VIEW')">CREATE_NEW_SERVER_VIEW</button>
+    <button class="nav-btn" onclick="switchView('CONNECTING_LOADING_VIEW')">CONNECTING_LOADING_VIEW</button>
+    <button class="nav-btn" onclick="switchView('SERVER_VIEW')">SERVER_VIEW</button>
+    <button class="nav-btn" onclick="switchView('USER_SETTINGS_VIEW')">USER_SETTINGS_VIEW</button>
+    <button class="nav-btn" onclick="switchView('SERVER_SETTINGS_VIEW')">SERVER_SETTINGS_VIEW</button>
+    <button class="nav-btn" onclick="switchView('ERROR_DISCONNECTED_VIEW')">ERROR_DISCONNECTED_VIEW</button>
+</div>
+
+<!-- GLÓWNY KONTENER URUCHOMIENIOWY -->
+<div id="app-container">
+
+    <!-- 1. AUTH_VIEW -->
+    <div id="AUTH_VIEW" class="view centered-layout" style="display: flex;">
+        <div class="card">
+            <h2>Witamy ponownie!</h2>
+            <div class="form-group">
+                <label>E-mail lub numer telefonu</label>
+                <input type="email" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label>Hasło</label>
+                <input type="password">
+            </div>
+            <button class="btn-primary">Zaloguj się</button>
+            <button class="btn-secondary">Zarejestruj konto</button>
+        </div>
+    </div>
+
+    <!-- 2. LANDING_VIEW -->
+    <div id="LANDING_VIEW" class="view centered-layout">
+        <div class="card" style="text-align: center;">
+            <h2>Klon Discord/TeamSpeak</h2>
+            <p style="margin-bottom: 20px; color: #b5bac1;">Nie jesteś połączony z żadnym serwerem. Co chcesz zrobić?</p>
+            <button class="btn-primary">Przejdź do listy znajomych</button>
+            <button class="btn-secondary">Dołącz do istniejącego serwera</button>
+            <button class="btn-secondary">Stwórz nowy serwer</button>
+        </div>
+    </div>
+
+    <!-- 3. FRIENDS_LIST_VIEW -->
+    <div id="FRIENDS_LIST_VIEW" class="view grid-layout">
+        <div class="server-sidebar">
+            <div class="server-icon active">DM</div>
+            <div class="server-icon">+</div>
+        </div>
+        <div class="sub-sidebar">
+            <div class="sub-sidebar-content">
+                <div class="sidebar-header">Prywatne wiadomości</div>
+                <div class="friend-list-item">👤 JanKowalski</div>
+                <div class="friend-list-item">👤 Programista99</div>
+            </div>
+            <div class="user-footer">
+                <div><strong>MójProfil</strong><br><span style="color: #23a55a; font-size:11px">Online</span></div>
+                <div>⚙️</div>
+            </div>
+        </div>
+        <div class="main-content-area">
+            <div class="content-header">👥 Znajomi</div>
+            <div class="friends-grid">
+                <div class="friend-row">
+                    <div><strong>JanKowalski</strong> <span class="status-online">● Online</span></div>
+                    <button class="btn-primary" style="width: auto; padding: 4px 10px; margin: 0;">Czat</button>
+                </div>
+                <div class="friend-row">
+                    <div><strong>Programista99</strong> <span class="status-offline">● Niedostępny</span></div>
+                    <button class="btn-secondary" style="width: auto; padding: 4px 10px; margin: 0;">Wiadomość</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. CONNECT_TO_NEW_SERVER_VIEW -->
+    <div id="CONNECT_TO_NEW_SERVER_VIEW" class="view centered-layout">
+        <div class="card">
+            <h2>Dołącz do serwera</h2>
+            <div class="form-group">
+                <label>Adres IP serwera / Kod zaproszenia</label>
+                <input type="text" placeholder="np. 192.168.1.15:9987 lub dsc.gg/klon">
+            </div>
+            <div class="form-group">
+                <label>Twój Nick</label>
+                <input type="text" value="User_C++">
+            </div>
+            <button class="btn-primary">Połącz</button>
+            <button class="btn-secondary">Anuluj</button>
+        </div>
+    </div>
+
+    <!-- 5. CREATE_NEW_SERVER_VIEW -->
+    <div id="CREATE_NEW_SERVER_VIEW" class="view centered-layout">
+        <div class="card">
+            <h2>Stwórz swój serwer</h2>
+            <div class="form-group">
+                <label>Nazwa serwera</label>
+                <input type="text" placeholder="Serwer programistyczny">
+            </div>
+            <div class="form-group">
+                <label>Region serwera</label>
+                <select>
+                    <option>Europa Środkowa (Poland)</option>
+                    <option>Europa Zachodnia (Frankfurt)</option>
+                </select>
+            </div>
+            <button class="btn-primary">Stwórz</button>
+            <button class="btn-secondary">Wróć</button>
+        </div>
+    </div>
+
+    <!-- 6. CONNECTING_LOADING_VIEW -->
+    <div id="CONNECTING_LOADING_VIEW" class="view centered-layout">
+        <div class="spinner"></div>
+        <h2>Nawiązywanie połączenia...</h2>
+        <p style="color: #949ba4;">Trwa handshake protokołu UDP...</p>
+    </div>
+
+    <!-- 7. SERVER_VIEW -->
+    <div id="SERVER_VIEW" class="view grid-layout">
+        <div class="server-sidebar">
+            <div class="server-icon">DM</div>
+            <div class="server-icon active">C++</div>
+            <div class="server-icon">TS</div>
+        </div>
+        <div class="sub-sidebar">
+            <div class="sub-sidebar-content">
+                <div class="sidebar-header">Mój Serwer C++</div>
+                <div style="margin-top: 10px;">
+                    <label>Kanały tekstowe</label>
+                    <div class="channel-list-item active"># ogólny</div>
+                    <div class="channel-list-item"># pomoc-kod</div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <label>Kanały głosowe</label>
+                    <div class="channel-list-item">🔊 Poczekalnia</div>
+                    <div class="channel-list-item">🔊 Pokój gier</div>
+                </div>
+            </div>
+            <div class="user-footer">
+                <div><strong>User_C++</strong></div>
+                <div>🎙️ 🎧 ⚙️</div>
+            </div>
+        </div>
+        <div class="main-content-area">
+            <div class="content-header"># ogólny</div>
+            <div class="chat-messages">
+                <div class="message">
+                    <div class="message-author">Admin <span>Dzisiaj o 12:00</span></div>
+                    <div class="message-text">Cześć! Witamy na klonie Discorda napisanym w C++.</div>
+                </div>
+                <div class="message">
+                    <div class="message-author">User_C++ <span>Dzisiaj o 12:05</span></div>
+                    <div class="message-text">Wygląda super, czat tekstowy i enumy działają stabilnie!</div>
+                </div>
+            </div>
+            <div class="chat-input-container">
+                <input type="text" class="chat-input" placeholder="Napisz na kanale # ogólny">
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. USER_SETTINGS_VIEW -->
+    <div id="USER_SETTINGS_VIEW" class="view settings-layout">
+        <div class="settings-sidebar">
+            <div class="settings-sidebar-menu">
+                <label>Ustawienia użytkownika</label>
+                <div class="channel-list-item active">Moje konto</div>
+                <div class="channel-list-item">Dźwięk i wideo</div>
+                <div class="channel-list-item">Wygląd</div>
+                <hr style="border: 0; border-top: 1px solid #3f4147; margin: 10px 0;">
+                <div class="channel-list-item" style="color: #f23f43;">Wyloguj się</div>
+            </div>
+        </div>
+        <div class="settings-content">
+            <div class="settings-heading">Moje Konto</div>
+            <div class="form-group">
+                <label>Nazwa użytkownika</label>
+                <input type="text" value="User_C++">
+            </div>
+            <div class="form-group">
+                <label>Urządzenie wejściowe (Mikrofon)</label>
+                <select>
+                    <option>Default Microphone Input</option>
+                    <option>Realtek High Definition Audio</option>
+                </select>
+            </div>
+            <button class="btn-primary" style="width: auto; padding: 10px 20px;">Zapisz zmiany</button>
+        </div>
+    </div>
+
+    <!-- 9. SERVER_SETTINGS_VIEW -->
+    <div id="SERVER_SETTINGS_VIEW" class="view settings-layout">
+        <div class="settings-sidebar">
+            <div class="settings-sidebar-menu">
+                <label>Ustawienia serwera</label>
+                <div class="channel-list-item active">Przegląd</div>
+                <div class="channel-list-item">Zarządzanie rolami</div>
+                <div class="channel-list-item">Zbanowani użytkownicy</div>
+                <hr style="border: 0; border-top: 1px solid #3f4147; margin: 10px 0;">
+                <div class="channel-list-item" style="color: #f23f43;">Usuń serwer</div>
+            </div>
+        </div>
+        <div class="settings-content">
+            <div class="settings-heading">Przegląd serwera</div>
+            <div class="form-group">
+                <label>Nazwa serwera</label>
+                <input type="text" value="Mój Serwer C++">
+            </div>
+            <div class="form-group">
+                <label>Weryfikacja członków</label>
+                <select>
+                    <option>Brak (Dowolny użytkownik może wejść)</option>
+                    <option>Niska (Wymagany zweryfikowany e-mail)</option>
+                </select>
+            </div>
+            <button class="btn-primary" style="width: auto; padding: 10px 20px;">Zapisz zmiany</button>
+        </div>
+    </div>
+
+    <!-- 10. ERROR_DISCONNECTED_VIEW -->
+    <div id="ERROR_DISCONNECTED_VIEW" class="view centered-layout">
+        <div class="card" style="text-align: center; border: 1px solid #f23f43;">
+            <h2 style="color: #f23f43;">Połączenie przerwane</h2>
+            <p style="margin-bottom: 20px; color: #b5bac1;">Wystąpił błąd sieciowy (WSAECONNRESET). Serwer zdalny zamknął połączenie lub minął limit czasu żądania (Timeout).</p>
+            <button class="btn-primary" style="background-color: #f23f43;">Połącz ponownie</button>
+            <button class="btn-secondary">Wróć do menu głównego</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- LOGIKA PRZEŁĄCZANIA WIDOKÓW -->
+<script>
+    function switchView(viewId) {
+        // 1. Ukryj wszystkie widoki
+        const views = document.querySelectorAll('.view');
+        views.forEach(v => {
+            v.style.display = 'none';
+        });
+
+        // 2. Pobierz docelowy widok
+        const targetView = document.getElementById(viewId);
+
+        // 3. Dopasuj styl wyświetlania zależnie od klasy makiety
+        if (targetView.classList.contains('grid-layout') || targetView.classList.contains('settings-layout')) {
+            targetView.style.display = 'grid';
+        } else {
+            targetView.style.display = 'flex';
+        }
+
+        // 4. Zaktualizuj wygląd przycisków w menu testowym
+        const buttons = document.querySelectorAll('.nav-btn');
+        buttons.forEach(btn => {
+            if (btn.innerText === viewId) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+</script>
+</body>
+</html>

@@ -35,13 +35,18 @@
  *  Here a server owner will be able to configure server settings.
  */
 enum class EViewState {
-    LANDING_VIEW,
-    CONNECT_TO_NEW_SERVER_VIEW,
-    CREATE_NEW_SERVER,
-    SERVER_VIEW,
-    USER_SETTINGS_VIEW,
-    SERVER_SETTINGS_VIEW,
+    AUTH_VIEW,                  // Logowanie i rejestracja
+    LANDING_VIEW,               // Ekran startowy / Dashboard
+    FRIENDS_LIST_VIEW,          // Lista znajomych i czaty DM (Direct Messages)
+    CONNECT_TO_NEW_SERVER_VIEW, // Dołączanie do serwera przez kod/IP
+    CREATE_NEW_SERVER_VIEW,     // Tworzenie nowego serwera
+    CONNECTING_LOADING_VIEW,    // Ekran ładowania podczas połączenia
+    SERVER_VIEW,                // Główny widok serwera (kanały + czat)
+    USER_SETTINGS_VIEW,         // Ustawienia profilu / audio
+    SERVER_SETTINGS_VIEW,       // Zarządzanie serwerem (role, nazwa)
+    ERROR_DISCONNECTED_VIEW     // Błędy sieciowe i utrata połączenia
 };
+
 
 /**
  * @brief This is a container for data regarding a view state.
