@@ -1,0 +1,32 @@
+Kluczowe parametry:
+Sample Rate (Częstotliwość próbkowania): 
+Opus najlepiej działa przy 48 kHz (48000 Hz).
+
+Channels (Kanały): 1 (mono) dla mikrofonu lub 2 (stereo). 
+Zazwyczaj komunikatory używają mono, żeby oszczędzić transfer.
+
+Frame Size (Rozmiar ramki): 
+Opus nie kompresuje całego strumienia naraz. Dzieli dźwięk na "ramki" czasowe. 
+Najbardziej optymalnym i standardowym rozmiarem w VoIP jest 20 milisekund (20 ms). 
+Przy 48 kHz daje to dokładnie 960 próbek na jedną ramkę ($48000 \cdot 0.02 = 960$).
+
+
+2. Architektura przesyłu
+Twój obieg danych będzie wyglądał tak:
+
+Mikrofon: Pobierasz 960 próbek PCM (20 ms dźwięku).
+
+Koder (Opus): Przekazujesz 960 próbek do kodera, a on zwraca Ci np. 50-100 bajtów skompresowanych danych.
+
+Sieć: Wysyłasz te bajty przez gniazdo sieciowe (zdecydowanie zalecane UDP, nie TCP, ze względu na opóźnienia).
+
+Odbiorca: Odbiera bajty.
+
+Dekoder (Opus): Przekształca skompresowane bajty z powrotem w 960 próbek PCM.
+
+Głośniki: Odtwarzasz odzyskane 960 próbek.
+
+
+
+Architektura Wątków
+

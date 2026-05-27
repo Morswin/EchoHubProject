@@ -3,7 +3,8 @@
         {
             "name": "Win32",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/build/_deps/asio-src/asio/include"
             ],
             "defines": [
                 "_DEBUG",
@@ -13,8 +14,11 @@
             "windowsSdkVersion": "10.0.26100.0",
             "compilerPath": "cl.exe",
             "cStandard": "c17",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "windows-msvc-x64"
+            "cppStandard": "c++23",
+            "intelliSenseMode": "windows-msvc-x64",
+            "recursiveIncludes": {
+                "reduce": "always"
+            }
         }
     ],
     "version": 4
