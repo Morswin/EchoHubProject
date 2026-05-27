@@ -1,0 +1,10 @@
+#ifndef ECHOHUBPROJECT_ATOMS_HPP
+#define ECHOHUBPROJECT_ATOMS_HPP
+
+
+namespace Atoms {
+
+}
+
+
+#endif //ECHOHUBPROJECT_ATOMS_HPP
