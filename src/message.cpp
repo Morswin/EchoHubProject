@@ -1,5 +1,7 @@
 #include "message.hpp"
-
+#include <chrono>
+#include <string>
+#include <format>
 
 Message::Message(std::string m_Content, std::string m_Author) : m_Content(std::move(m_Content)), m_Author(std::move(m_Author)) {
     this->m_DataTimeSent = std::chrono::system_clock::now();
