@@ -14,7 +14,7 @@ git submodule update --init --recursive
 ```  
 
 ## Compiling
-If you're trying to compile this on windows, try running this batch file, or read it's contents to see how we suggest to use cmake to help yourself compile this repo.
+If you're trying to compile this on windows, try running this batch file, or read it's [contents](https://github.com/Morswin/EchoHubProject/blob/main/compile.bat) to see how we suggest to use cmake to help yourself compile this repo.
 ```shell
 compile.bat
 ```
