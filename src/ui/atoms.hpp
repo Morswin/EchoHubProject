@@ -68,13 +68,13 @@ namespace Atoms {
     }
 
     inline void InputText(
-    const std::string& label,
-    std::string& buffer,
-    const Theme& theme,
-    const ImVec2& size = {0, 0},
-    const std::string& hint = "",
-    bool password = false
-) {
+        const std::string& label,
+        std::string& buffer,
+        const Theme& theme,
+        const ImVec2& size = {0, 0},
+        const std::string& hint = "",
+        bool password = false
+    ) {
         if (!label.empty()) {
             ImGui::TextColored(theme.text, "%s", label.c_str());
         }
@@ -201,6 +201,20 @@ namespace Atoms {
 
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor(2);
+    }
+
+    inline void Card(
+        const std::function<void()>& content,
+        const Theme& theme,
+        const ImVec2& size = {0, 0}
+    ) {
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, theme.surface);
+        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, theme.borderRadius);
+        ImGui::BeginChild("##Card", size, true, ImGuiWindowFlags_NoScrollbar);
+        content();
+        ImGui::EndChild();
+        ImGui::PopStyleVar(1);
+        ImGui::PopStyleColor(1);
     }
 }
 

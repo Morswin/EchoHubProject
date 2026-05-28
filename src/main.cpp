@@ -16,8 +16,9 @@
 
 #include "message.hpp"
 // #include "ThreadSafeQueue.hpp"
-#include "ui/theme.hpp"
-#include "ui/atoms.hpp"
+// #include "ui/theme.hpp"
+// #include "ui/atoms.hpp"
+#include "ui/views.hpp"
 
 
 /**
@@ -84,6 +85,9 @@ Theme theme = Theme::createGoldGalaxyTheme();
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
 
+std::string email;
+std::string password;
+
 std::vector<Message> messages = {
     {"Message 1", "User 1"},
     {"Message 2", "User 2"},
@@ -122,54 +126,56 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
-    // The actual contents of the window
-    int main_window_w, main_window_h;
-    SDL_GetWindowSize(window, &main_window_w, &main_window_h);
-    ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w), static_cast<float>(main_window_h)));
-    ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
-    if (ImGui::Begin("EchoHubRoot", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
-        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
-        ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 4.0f, static_cast<float>(main_window_h)));
-        if (ImGui::Begin("EchoHubNavigation", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-            ImGui::Text("Navigation");
-        } ImGui::End();
-        ImGui::SameLine();
-        ImGui::SetNextWindowPos(ImVec2((static_cast<float>(main_window_w) / 4.0f), 0.0f));
-        ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 2.0f, static_cast<float>(main_window_h)));
-        if (ImGui::Begin("EchoHubContent", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-            if (Atoms::Button("Zaloguj się", theme, {200, 40})) {
-                // Obsługa logowania
-            }
-            if (ImGui::BeginChild("Messages", ImVec2(0.0f, -60.0f), false)) {
-                for (Message& message : messages) {
-                    if (ImGui::BeginChild(std::format("Message-{}", message.GetID()).c_str(), ImVec2(0.0f, 50.0f), true)) {
-                        ImGui::Text("%s", message.GetAuthor().c_str());
-                        ImGui::SameLine();
-                        ImGui::Text("%s", message.GetDataTime().c_str());
-                        ImGui::Text("%s", message.GetContent().c_str());
-                    } ImGui::EndChild();
-                }
-            }
-            ImGui::EndChild();
-            if (ImGui::BeginChild("NewMessageInput", ImVec2(0.0f, 45), false)) {
-                if (ImGui::InputText("##message_input", message_buffer, IM_ARRAYSIZE(message_buffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
-                    // Message is being sent
-                    SDL_Log("%s", message_buffer);
-                    message_buffer[0] = '\0';
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("Send")) {
-                    SDL_Log("%s", message_buffer);
-                }
-            } ImGui::EndChild();
-        } ImGui::End();
-        ImGui::SameLine();
-        ImGui::SetNextWindowPos(ImVec2((static_cast<float>(main_window_w) / 4.0f * 3.0f), 0.0f));
-        ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 4.0f, static_cast<float>(main_window_h)));
-        if (ImGui::Begin("EchoHubDetails", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-            ImGui::Text("Details");
-        } ImGui::End();
-    } ImGui::End();
+    Views::AuthView(email, password, theme);
+
+    // // The actual contents of the window
+    // int main_window_w, main_window_h;
+    // SDL_GetWindowSize(window, &main_window_w, &main_window_h);
+    // ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w), static_cast<float>(main_window_h)));
+    // ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+    // if (ImGui::Begin("EchoHubRoot", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
+    //     ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
+    //     ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 4.0f, static_cast<float>(main_window_h)));
+    //     if (ImGui::Begin("EchoHubNavigation", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+    //         ImGui::Text("Navigation");
+    //     } ImGui::End();
+    //     ImGui::SameLine();
+    //     ImGui::SetNextWindowPos(ImVec2((static_cast<float>(main_window_w) / 4.0f), 0.0f));
+    //     ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 2.0f, static_cast<float>(main_window_h)));
+    //     if (ImGui::Begin("EchoHubContent", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+    //         if (Atoms::Button("Zaloguj się", theme, {200, 40})) {
+    //             // Obsługa logowania
+    //         }
+    //         if (ImGui::BeginChild("Messages", ImVec2(0.0f, -60.0f), false)) {
+    //             for (Message& message : messages) {
+    //                 if (ImGui::BeginChild(std::format("Message-{}", message.GetID()).c_str(), ImVec2(0.0f, 50.0f), true)) {
+    //                     ImGui::Text("%s", message.GetAuthor().c_str());
+    //                     ImGui::SameLine();
+    //                     ImGui::Text("%s", message.GetDataTime().c_str());
+    //                     ImGui::Text("%s", message.GetContent().c_str());
+    //                 } ImGui::EndChild();
+    //             }
+    //         }
+    //         ImGui::EndChild();
+    //         if (ImGui::BeginChild("NewMessageInput", ImVec2(0.0f, 45), false)) {
+    //             if (ImGui::InputText("##message_input", message_buffer, IM_ARRAYSIZE(message_buffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
+    //                 // Message is being sent
+    //                 SDL_Log("%s", message_buffer);
+    //                 message_buffer[0] = '\0';
+    //             }
+    //             ImGui::SameLine();
+    //             if (ImGui::Button("Send")) {
+    //                 SDL_Log("%s", message_buffer);
+    //             }
+    //         } ImGui::EndChild();
+    //     } ImGui::End();
+    //     ImGui::SameLine();
+    //     ImGui::SetNextWindowPos(ImVec2((static_cast<float>(main_window_w) / 4.0f * 3.0f), 0.0f));
+    //     ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 4.0f, static_cast<float>(main_window_h)));
+    //     if (ImGui::Begin("EchoHubDetails", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+    //         ImGui::Text("Details");
+    //     } ImGui::End();
+    // } ImGui::End();
 
     // Rendering background
     SDL_SetRenderDrawColor(renderer, 33, 33, 33, 255);
