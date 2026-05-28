@@ -4,17 +4,20 @@
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlrenderer3.h>
-
 #include <opus.h>
+
 #include <string>
 #include <vector>
-#include <chrono>
+// #include <chrono>
 #include <format>
 #include <iostream>
-#include <cstdint>
+// #include <cstdint>
 #include <thread>
+
 #include "message.hpp"
-#include "ThreadSafeQueue.hpp"
+// #include "ThreadSafeQueue.hpp"
+#include "ui/theme.hpp"
+#include "ui/atoms.hpp"
 
 
 /**
@@ -78,6 +81,7 @@ public:
 
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
+Theme theme = Theme::createGoldGalaxyTheme();
 
 std::vector<Message> messages = {
     {"Message 1", "User 1"},
@@ -124,6 +128,9 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         ImGui::SetNextWindowPos(ImVec2((static_cast<float>(main_window_w) / 4.0f), 0.0f));
         ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 2.0f, static_cast<float>(main_window_h)));
         if (ImGui::Begin("EchoHubContent", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+            if (Atoms::Button("Zaloguj się", theme, {200, 40})) {
+                // Obsługa logowania
+            }
             if (ImGui::BeginChild("Messages", ImVec2(0.0f, -60.0f), false)) {
                 for (Message& message : messages) {
                     if (ImGui::BeginChild(std::format("Message-{}", message.GetID()).c_str(), ImVec2(0.0f, 50.0f), true)) {

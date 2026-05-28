@@ -53,6 +53,10 @@ FetchContent_MakeAvailable(opus)
 add_executable(echo_hub
         src/main.cpp
         src/message.cpp
+        src/ui/atoms.cpp
+)
+target_include_directories(echo_hub PRIVATE
+        src
 )
 
 # Linking
