@@ -79,9 +79,10 @@ public:
 
 };
 
+Theme theme = Theme::createGoldGalaxyTheme();
+
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
-Theme theme = Theme::createGoldGalaxyTheme();
 
 std::vector<Message> messages = {
     {"Message 1", "User 1"},
@@ -104,6 +105,14 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     ImGui::CreateContext();
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
+
+    // 1. Załaduj fonty (MUSI BYĆ PRZED PIERWSZYM ImGui::NewFrame!)
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Roboto (tekst)
+    theme.fontRegular = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto-Black.ttf", 16.0f);
+    theme.fontBold = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto-Bold.ttf", 16.0f);
+
     return SDL_APP_CONTINUE;
 }
 

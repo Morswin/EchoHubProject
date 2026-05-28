@@ -79,3 +79,16 @@ if(WIN32)
     )
 endif()
 
+
+add_custom_command(TARGET echo_hub POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+        $<TARGET_FILE_DIR:echo_hub>/assets/fonts
+
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_SOURCE_DIR}/assets/fonts/Roboto-Bold.ttf
+        $<TARGET_FILE_DIR:echo_hub>/assets/fonts/
+
+        COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_SOURCE_DIR}/assets/fonts/Roboto-Black.ttf
+        $<TARGET_FILE_DIR:echo_hub>/assets/fonts/
+)
