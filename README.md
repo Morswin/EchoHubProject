@@ -18,3 +18,7 @@ If you're trying to compile this on windows, try running this batch file, or rea
 ```shell
 compile.bat
 ```
+
+### Prerequisites
+You need to have intsalled `cmake` to use this script. It also assumes that you're using windows. You can get the compiler with the Visual Studio Installer.  
+For tips how to compile this on macos or linux please rise an issue in this project.
