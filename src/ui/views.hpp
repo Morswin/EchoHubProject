@@ -5,6 +5,7 @@
 #include "molecules.hpp"
 #include "atoms.hpp"
 #include "theme.hpp"
+#include "view_states.hpp"
 
 
 namespace Views {
@@ -18,7 +19,8 @@ namespace Views {
             std::string& email,
             std::string& password,
             const Theme& theme,
-            const std::function<void()>& onLogin = {}
+            const std::function<void()>& onLogin = {},
+            const std::function<void()>& onRegister = {}
         ) {
         ImGui::SetWindowSize({400, 300});
         ImGui::SetNextWindowPos(
@@ -40,7 +42,7 @@ namespace Views {
 
         if (Atoms::Button("Zaloguj się", theme, {200, 40}, onLogin)) {}
         ImGui::Spacing();
-        Atoms::Button("Zarejestruj konto", theme, {200, 40}, nullptr, true);
+        if (Atoms::Button("Zarejestruj konto", theme, {200, 40}, onRegister)) {}
 
         ImGui::End();
     }
@@ -116,11 +118,18 @@ namespace Views {
         const std::function<void()>& onConnect = {},
         const std::function<void()>& onCancel = {}
     ) {
-        ImGui::SetWindowSize({400, 300});
-        ImGui::SetWindowPos(
-            ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
-            ImGuiCond_Once
+        ImGui::SetNextWindowSize({400, 300});
+        ImGui::SetNextWindowPos(
+            ImVec2(
+                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
+                (ImGui::GetIO().DisplaySize.y - 300) * 0.5f
+            ),
+            ImGuiCond_Appearing
         );
+        // ImGui::SetWindowPos(
+        //     ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
+        //     ImGuiCond_Once
+        // );
         ImGui::Begin("Dołącz do serwera", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
         Atoms::Text("Dołącz do serwera", theme, 0);
@@ -145,10 +154,17 @@ namespace Views {
         const std::function<void()>& onCreate = {},
         const std::function<void()>& onBack = {}
     ) {
-        ImGui::SetWindowSize({400, 300});
-        ImGui::SetWindowPos(
-            ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
-            ImGuiCond_Once
+        ImGui::SetNextWindowSize({400, 300});
+        // ImGui::SetNextWindowPos(
+        //     ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
+        //     ImGuiCond_Once
+        // );
+        ImGui::SetNextWindowPos(
+            ImVec2(
+                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
+                (ImGui::GetIO().DisplaySize.y - 300) * 0.5f
+            ),
+            ImGuiCond_Appearing
         );
 
         ImGui::Begin("Stwórz serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
@@ -185,16 +201,23 @@ namespace Views {
         const std::vector<Molecules::Message>& messages,
         std::string& chatInput,
         const Theme& theme,
-        const std::function<void(const std::string&)>& onSendMessage = {}
+        const std::function<void(const std::string&)>& onSendMessage = {},
+        const std::function<void()>& onCreateServer = {},
+        const std::function<void(const std::string&)>& onConnectToServer = {},
+        const std::function<void()>& onDirectMessage = {}
     ) {
         ImGui::SetWindowSize(ImGui::GetIO().DisplaySize);
+        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Appearing);
 
         ImGui::Begin("EchoHub - Serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         // 1. ServerSidebar (ikony serwerów)
         ImGui::BeginChild("ServerSidebar", {72, -1}, true);
-        Molecules::ServerIcon("DM", theme, false);
-        Molecules::ServerIcon(serverName.substr(0, 2), theme, true); // Aktywny
-        Molecules::ServerIcon("+", theme, false);
+
+        Molecules::ServerIcon("DM", theme, false, [&]() {
+            if (onDirectMessage) onDirectMessage();
+        });
+        Molecules::ServerIcon(serverName.substr(0, 2), theme, true);
+        Molecules::ServerIcon("+", theme, false, onCreateServer);
         ImGui::EndChild();
         ImGui::SameLine();
 
@@ -356,10 +379,13 @@ namespace Views {
     }
 
     inline void ConnectingLoadingView(const Theme& theme) {
-        ImGui::SetWindowSize({400, 200});
-        ImGui::SetWindowPos(
-            ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
-            ImGuiCond_Once
+        ImGui::SetNextWindowSize({400, 200});
+        ImGui::SetNextWindowPos(
+            ImVec2(
+                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,  // (1920-400)/2 = 760
+                (ImGui::GetIO().DisplaySize.y - 200) * 0.5f   // (1080-200)/2 = 440
+            ),
+            ImGuiCond_Appearing
         );
 
         ImGui::Begin("Nawiązywanie połączenia", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
@@ -397,6 +423,50 @@ namespace Views {
         if (Atoms::Button("Połącz ponownie", theme, {200, 40}, onReconnect)) {}
         ImGui::Spacing();
         if (Atoms::Button("Wróć do menu głównego", theme, {200, 40}, onBackToMain)) {}
+
+        ImGui::End();
+    }
+
+    inline void RegisterView(
+        std::string& email,
+        std::string& username,
+        std::string& password,
+        std::string& confirmPassword,
+        const Theme& theme,
+        const std::function<void()>& onRegister = {},  // Zarejestruj
+        const std::function<void()>& onBackToLogin = {} // Wróć do logowania
+    ) {
+        // Ustaw wyśrodkowane okno 400x400
+        ImGui::SetNextWindowSize({400, 400});
+        ImGui::SetNextWindowPos(
+            ImVec2(
+                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
+                (ImGui::GetIO().DisplaySize.y - 400) * 0.5f
+            ),
+            ImGuiCond_Appearing
+        );
+
+        ImGui::Begin("EchoHub - Rejestracja", nullptr,
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove
+        );
+
+        Atoms::Text("Stwórz nowe konto", theme, 0);
+        ImGui::Spacing();
+
+        Atoms::InputText("E-mail", email, theme, {200, 0}, "Podaj swój adres e-mail");
+        ImGui::Spacing();
+        Atoms::InputText("Nazwa użytkownika", username, theme, {200, 0}, "Twoja nazwa wyświetlana");
+        ImGui::Spacing();
+        Atoms::InputText("Hasło", password, theme, {200, 0}, "", true);
+        ImGui::Spacing();
+        Atoms::InputText("Powtórz hasło", confirmPassword, theme, {200, 0}, "", true);
+        ImGui::Spacing();
+
+        if (Atoms::Button("Zarejestruj się", theme, {200, 40}, onRegister)) {}
+        ImGui::Spacing();
+        if (Atoms::Button("Mam już konto", theme, {200, 40}, onBackToLogin)) {}
 
         ImGui::End();
     }

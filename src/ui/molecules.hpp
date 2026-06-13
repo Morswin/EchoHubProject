@@ -91,7 +91,8 @@ namespace Molecules {
     inline void ServerIcon(
         const std::string& label,
         const Theme& theme,
-        bool isActive = false
+        bool isActive = false,
+        const std::function<void()>& onClick = {}
     ) {
         if (isActive) {
             ImGui::PushStyleColor(ImGuiCol_Button, theme.primary);
@@ -101,7 +102,9 @@ namespace Molecules {
             ImGui::PushStyleColor(ImGuiCol_Text, theme.textSecondary);
         }
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 16.0f); // Zaokrąglone ikony
-        ImGui::Button(label.c_str(), {48, 48});
+        if (ImGui::Button(label.c_str(), {48, 48}) && onClick) {
+            onClick();
+        }
         ImGui::PopStyleVar(1);
         ImGui::PopStyleColor(2);
     }

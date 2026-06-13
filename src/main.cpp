@@ -62,6 +62,7 @@ std::string chatInput;
 std::string username = "User_C++";
 std::string selectedMic = "Default Microphone Input";
 std::string verificationLevel = "Brak (Dowolny użytkownik może wejść)";
+std::string confirmPassword;
 
 // Dane testowe (później zastąpione realnymi danymi)
 std::vector<Molecules::Friend> friends = {
@@ -140,9 +141,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     // --- 5. System przełączania widoków ---
         switch (currentView) {
             case EViewState::AUTH_VIEW:
-                Views::AuthView(email, password, theme, [&]() {
-                    currentView = EViewState::LANDING_VIEW; // Po zalogowaniu
-                });
+                Views::AuthView(email, password, theme,
+                    [&]() { currentView = EViewState::LANDING_VIEW; },
+                    [&]() { currentView = EViewState::REGISTER_VIEW; }
+                    );
                 break;
 
             case EViewState::LANDING_VIEW:
@@ -176,7 +178,12 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                     [&](const std::string& msg) {
                         messages.push_back({username, msg, "Teraz"});
                         chatInput.clear();
-                    }
+                    },
+                    [&]() { currentView = EViewState::CREATE_NEW_SERVER_VIEW; },
+                    [&](const std::string& serverId) {
+                        currentView = EViewState::SERVER_VIEW;  // Tutaj dodasz logikę połączenia
+                    },
+                    [&]() { currentView = EViewState::FRIENDS_LIST_VIEW; }
                 );
                 break;
 
@@ -206,6 +213,18 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                 Views::ErrorDisconnectedView(theme,
                     [&]() { currentView = EViewState::CONNECTING_LOADING_VIEW; },
                     [&]() { currentView = EViewState::LANDING_VIEW; }
+                );
+                break;
+
+            case EViewState::REGISTER_VIEW:
+                Views::RegisterView(email, username, password, confirmPassword, theme,
+                    [&]() {
+                        // Obsługa rejestracji (później)
+                        currentView = EViewState::LANDING_VIEW;
+                    },
+                    [&]() {
+                        currentView = EViewState::AUTH_VIEW; // Wróć do logowania
+                    }
                 );
                 break;
         }
