@@ -6,6 +6,7 @@
 #include "atoms.hpp"
 #include "theme.hpp"
 #include "view_states.hpp"
+#include "users.hpp"
 
 
 namespace Views {
@@ -16,33 +17,60 @@ namespace Views {
     };
 
     inline void AuthView(
-            std::string& email,
-            std::string& password,
+            std::string& username,
             const Theme& theme,
             const std::function<void()>& onLogin = {},
             const std::function<void()>& onRegister = {}
         ) {
-        ImGui::SetNextWindowSize({400, 300});
+        ImGui::SetNextWindowSize({400, 400});
         ImGui::SetNextWindowPos(
             ImVec2(
                 (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
-                (ImGui::GetIO().DisplaySize.y - 300) * 0.5f
+                (ImGui::GetIO().DisplaySize.y - 400) * 0.5f
             ),
             ImGuiCond_Appearing
         );
+        ImGui::Begin("EchoHub - Wybierz użytkownika", nullptr,
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove
+        );
 
-        ImGui::Begin("EchoHub - Logowanie", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-        Atoms::Text("Witamy ponownie!", theme, 0);
+        Atoms::Text("Witamy w EchoHub!", theme, 0);
         ImGui::Spacing();
 
-        Atoms::InputText("E-mail", email, theme, {200, 0});
-        ImGui::Spacing();
-        Atoms::InputText("Hasło", password, theme, {200, 0}, "", true);
+        // Lista istniejących użytkowników
+        static std::vector<std::string> users = UserManager::loadUsers();
+        static int selectedUserIndex = -1;
+
+        if (ImGui::BeginCombo("Wybierz użytkownika", selectedUserIndex >= 0 ? users[selectedUserIndex].c_str() : "Nowy użytkownik")) {
+            for (int i = 0; i < users.size(); i++) {
+                bool isSelected = (selectedUserIndex == i);
+                if (ImGui::Selectable(users[i].c_str(), isSelected)) {
+                    selectedUserIndex = i;
+                    username = users[i];
+                }
+                if (isSelected) ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+
+        // ImGui::Spacing();
+        // Atoms::InputText("Nazwa użytkownika", username, theme, {200, 0}, "Wprowadź swoją nazwę");
         ImGui::Spacing();
 
-        if (Atoms::Button("Zaloguj się", theme, {200, 40}, onLogin)) {}
+        if (Atoms::Button("Zaloguj się", theme, {200, 40}, [&]() {
+            if (!username.empty()) {
+                if (selectedUserIndex >= 0) {
+                    username = users[selectedUserIndex];
+                }
+                UserManager::setCurrentUser(username);
+                if (onLogin) onLogin();
+            }
+        })) {}
+
         ImGui::Spacing();
-        if (Atoms::Button("Zarejestruj konto", theme, {200, 40}, onRegister)) {}
+        if (Atoms::Button("Zarejestruj nowego użytkownika", theme, {200, 40}, onRegister)) {}
 
         ImGui::End();
     }
@@ -432,25 +460,20 @@ namespace Views {
     }
 
     inline void RegisterView(
-        std::string& email,
-        std::string& username,
-        std::string& password,
-        std::string& confirmPassword,
-        const Theme& theme,
-        const std::function<void()>& onRegister = {},  // Zarejestruj
-        const std::function<void()>& onBackToLogin = {} // Wróć do logowania
-    ) {
-        // Ustaw wyśrodkowane okno 400x400
-        ImGui::SetNextWindowSize({400, 400});
+    std::string& username,
+    const Theme& theme,
+    const std::function<void()>& onRegister = {},
+    const std::function<void()>& onBackToLogin = {}
+) {
+        ImGui::SetNextWindowSize({400, 300});
         ImGui::SetNextWindowPos(
             ImVec2(
                 (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
-                (ImGui::GetIO().DisplaySize.y - 400) * 0.5f
+                (ImGui::GetIO().DisplaySize.y - 300) * 0.5f
             ),
             ImGuiCond_Appearing
         );
-
-        ImGui::Begin("EchoHub - Rejestracja", nullptr,
+        ImGui::Begin("EchoHub - Nowy użytkownik", nullptr,
             ImGuiWindowFlags_NoTitleBar |
             ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoMove
@@ -458,17 +481,17 @@ namespace Views {
 
         Atoms::Text("Stwórz nowe konto", theme, 0);
         ImGui::Spacing();
-
-        Atoms::InputText("E-mail", email, theme, {200, 0}, "Podaj swój adres e-mail");
-        ImGui::Spacing();
         Atoms::InputText("Nazwa użytkownika", username, theme, {200, 0}, "Twoja nazwa wyświetlana");
         ImGui::Spacing();
-        Atoms::InputText("Hasło", password, theme, {200, 0}, "", true);
-        ImGui::Spacing();
-        Atoms::InputText("Powtórz hasło", confirmPassword, theme, {200, 0}, "", true);
-        ImGui::Spacing();
 
-        if (Atoms::Button("Zarejestruj się", theme, {200, 40}, onRegister)) {}
+        if (Atoms::Button("Zarejestruj się", theme, {200, 40}, [&]() {
+            if (!username.empty() && !UserManager::userExists(username)) {
+                UserManager::saveUser(username);
+                UserManager::setCurrentUser(username);
+                if (onRegister) onRegister();
+            }
+        })) {}
+
         ImGui::Spacing();
         if (Atoms::Button("Mam już konto", theme, {200, 40}, onBackToLogin)) {}
 
