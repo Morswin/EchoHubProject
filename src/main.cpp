@@ -14,6 +14,7 @@
 // #include <cstdint>
 #include <thread>
 
+#include "app_state.hpp"
 #include "message.hpp"
 // #include "ThreadSafeQueue.hpp"
 #include "ui/views.hpp"
@@ -21,40 +22,40 @@
 
 
 // APP STATE
-
-SDL_Window *window = nullptr;
-SDL_Renderer *renderer = nullptr;
-
-// --- 3. Stan aplikacji ---
-EViewState currentView = EViewState::AUTH_VIEW; // Startujemy od AuthView
-
-// Stan dla każdego widoku
-std::string email, password;
-std::string serverAddress, nickname;
-std::string serverName, region;
-std::string chatInput;
-std::string username = "User_C++";
-std::string selectedMic = "Default Microphone Input";
-std::string verificationLevel = "Brak (Dowolny użytkownik może wejść)";
-std::string confirmPassword;
-
-// Dane testowe (później zastąpione realnymi danymi)
-std::vector<Molecules::Friend> friends = {
-    {"JanKowalski", true},
-    {"Programista99", false}
-};
-std::vector<Views::Channel> channels = {
-    {"ogólny", "#", true},
-    {"pomoc-kod", "#", true},
-    {"Poczekalnia", "🔊", false},
-    {"Pokój gier", "🔊", false}
-};
-std::vector<Molecules::Message> messages = {
-    {"Admin", "Cześć! Witamy na klonie Discorda napisanym w C++.", "Dzisiaj o 12:00"},
-    {"User_C++", "Wygląda super, czat tekstowy i enumy działają stabilnie!", "Dzisiaj o 12:05"}
-};
-
-Theme theme = Theme::createGoldGalaxyTheme();
+AppState g_AppState;
+// SDL_Window *window = nullptr;
+// SDL_Renderer *renderer = nullptr;
+//
+// // --- 3. Stan aplikacji ---
+// EViewState currentView = EViewState::AUTH_VIEW; // Startujemy od AuthView
+//
+// // Stan dla każdego widoku
+// std::string email, password;
+// std::string serverAddress, nickname;
+// std::string serverName, region;
+// std::string chatInput;
+// std::string username = "User_C++";
+// std::string selectedMic = "Default Microphone Input";
+// std::string verificationLevel = "Brak (Dowolny użytkownik może wejść)";
+// std::string confirmPassword;
+//
+// // Dane testowe (później zastąpione realnymi danymi)
+// std::vector<Molecules::Friend> friends = {
+//     {"JanKowalski", true},
+//     {"Programista99", false}
+// };
+// std::vector<Views::Channel> channels = {
+//     {"ogólny", "#", true},
+//     {"pomoc-kod", "#", true},
+//     {"Poczekalnia", "🔊", false},
+//     {"Pokój gier", "🔊", false}
+// };
+// std::vector<Molecules::Message> messages = {
+//     {"Admin", "Cześć! Witamy na klonie Discorda napisanym w C++.", "Dzisiaj o 12:00"},
+//     {"User_C++", "Wygląda super, czat tekstowy i enumy działają stabilnie!", "Dzisiaj o 12:05"}
+// };
+//
+// Theme theme = Theme::createGoldGalaxyTheme();
 
 // static char message_buffer[1024] = "";
 // APP STATE END
@@ -89,10 +90,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     // --- 5. System przełączania widoków ---
         switch (currentView) {
             case EViewState::AUTH_VIEW:
-                Views::AuthView(email, password, theme,
-                    [&]() { currentView = EViewState::LANDING_VIEW; },
-                    [&]() { currentView = EViewState::REGISTER_VIEW; }
-                    );
+                Views::AuthView(username, theme,
+                    [&]() { currentView = EViewState::LANDING_VIEW; },  // Zaloguj
+                    [&]() { currentView = EViewState::REGISTER_VIEW; }  // Zarejestruj
+                );
                 break;
 
             case EViewState::LANDING_VIEW:
@@ -171,14 +172,9 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                 break;
 
             case EViewState::REGISTER_VIEW:
-                Views::RegisterView(email, username, password, confirmPassword, theme,
-                    [&]() {
-                        // Obsługa rejestracji (później)
-                        currentView = EViewState::LANDING_VIEW;
-                    },
-                    [&]() {
-                        currentView = EViewState::AUTH_VIEW; // Wróć do logowania
-                    }
+                Views::RegisterView(username, theme,
+                    [&]() { currentView = EViewState::LANDING_VIEW; },  // Powrót po rejestracji
+                    [&]() { currentView = EViewState::AUTH_VIEW; }       // Anuluj
                 );
                 break;
         }
