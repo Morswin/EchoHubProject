@@ -22,7 +22,7 @@ namespace Views {
             const std::function<void()>& onLogin = {},
             const std::function<void()>& onRegister = {}
         ) {
-        ImGui::SetWindowSize({400, 300});
+        ImGui::SetNextWindowSize({400, 300});
         ImGui::SetNextWindowPos(
             ImVec2(
                 (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
@@ -53,7 +53,7 @@ namespace Views {
             const std::function<void()>& onConnectToServer = {},
             const std::function<void()>& onCreateServer = {}
         ) {
-        ImGui::SetWindowSize({400, 300});
+        ImGui::SetNextWindowSize({400, 300});
         ImGui::SetNextWindowPos(
             ImVec2(
                 (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
@@ -82,7 +82,8 @@ namespace Views {
         const Theme& theme
     ) {
         // Grid: [ServerSidebar | SubSidebar | MainContent]
-        ImGui::SetWindowSize(ImGui::GetIO().DisplaySize);
+        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+        ImGui::SetNextWindowPos({0, 0});
         ImGui::Begin("EchoHub - Znajomi", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
         // 1. ServerSidebar (ikony)
@@ -206,8 +207,8 @@ namespace Views {
         const std::function<void(const std::string&)>& onConnectToServer = {},
         const std::function<void()>& onDirectMessage = {}
     ) {
-        ImGui::SetWindowSize(ImGui::GetIO().DisplaySize);
-        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Appearing);
+        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+        ImGui::SetNextWindowPos({0, 0});
 
         ImGui::Begin("EchoHub - Serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         // 1. ServerSidebar (ikony serwerów)
