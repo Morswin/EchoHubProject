@@ -17,15 +17,19 @@ namespace Views {
     inline void AuthView(
             std::string& email,
             std::string& password,
-            const Theme& theme
+            const Theme& theme,
+            const std::function<void()>& onLogin = {}
         ) {
-        ImGui::Begin("EchoHub - Logowanie", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         ImGui::SetWindowSize({400, 300});
-        ImGui::SetWindowPos(
-            ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
-            ImGuiCond_Once
+        ImGui::SetNextWindowPos(
+            ImVec2(
+                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
+                (ImGui::GetIO().DisplaySize.y - 300) * 0.5f
+            ),
+            ImGuiCond_Appearing
         );
 
+        ImGui::Begin("EchoHub - Logowanie", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         Atoms::Text("Witamy ponownie!", theme, 0);
         ImGui::Spacing();
 
@@ -34,39 +38,39 @@ namespace Views {
         Atoms::InputText("Hasło", password, theme, {200, 0}, "", true);
         ImGui::Spacing();
 
-        if (Atoms::Button("Zaloguj się", theme, {200, 40})) {
-            // Obsługa logowania
-        }
+        if (Atoms::Button("Zaloguj się", theme, {200, 40}, onLogin)) {}
         ImGui::Spacing();
         Atoms::Button("Zarejestruj konto", theme, {200, 40}, nullptr, true);
 
         ImGui::End();
     }
 
-    inline void LandingView(const Theme& theme) {
-        ImGui::Begin("EchoHub", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+    inline void LandingView(
+            const Theme& theme,
+            const std::function<void()>& onFriendsList = {},
+            const std::function<void()>& onConnectToServer = {},
+            const std::function<void()>& onCreateServer = {}
+        ) {
         ImGui::SetWindowSize({400, 300});
-        ImGui::SetWindowPos(
-            ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
-            ImGuiCond_Once
+        ImGui::SetNextWindowPos(
+            ImVec2(
+                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
+                (ImGui::GetIO().DisplaySize.y - 300) * 0.5f
+            ),
+            ImGuiCond_Appearing
         );
 
+        ImGui::Begin("EchoHub", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         Atoms::Text("Klon Discord/TeamSpeak", theme, 0);
         ImGui::Spacing();
         Atoms::Text("Nie jesteś połączony z żadnym serwerem. Co chcesz zrobić?", theme, 1);
         ImGui::Spacing();
 
-        if (Atoms::Button("Przejdź do listy znajomych", theme, {200, 40})) {
-            // Zmień widok na FriendsListView
-        }
+        if (Atoms::Button("Przejdź do listy znajomych", theme, {200, 40}, onFriendsList)) {}
         ImGui::Spacing();
-        if (Atoms::Button("Dołącz do istniejącego serwera", theme, {200, 40})) {
-            // Zmień widok na ConnectToNewServerView
-        }
+        if (Atoms::Button("Dołącz do istniejącego serwera", theme, {200, 40}, onConnectToServer)) {}
         ImGui::Spacing();
-        if (Atoms::Button("Stwórz nowy serwer", theme, {200, 40})) {
-            // Zmień widok na CreateNewServerView
-        }
+        if (Atoms::Button("Stwórz nowy serwer", theme, {200, 40}, onCreateServer)) {}
 
         ImGui::End();
     }
@@ -76,8 +80,8 @@ namespace Views {
         const Theme& theme
     ) {
         // Grid: [ServerSidebar | SubSidebar | MainContent]
-        ImGui::Begin("EchoHub - Znajomi", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         ImGui::SetWindowSize(ImGui::GetIO().DisplaySize);
+        ImGui::Begin("EchoHub - Znajomi", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
 
         // 1. ServerSidebar (ikony)
         ImGui::BeginChild("ServerSidebar", {72, -1}, true);
@@ -112,12 +116,12 @@ namespace Views {
         const std::function<void()>& onConnect = {},
         const std::function<void()>& onCancel = {}
     ) {
-        ImGui::Begin("Dołącz do serwera", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         ImGui::SetWindowSize({400, 300});
         ImGui::SetWindowPos(
             ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
             ImGuiCond_Once
         );
+        ImGui::Begin("Dołącz do serwera", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
 
         Atoms::Text("Dołącz do serwera", theme, 0);
         ImGui::Spacing();
@@ -141,13 +145,13 @@ namespace Views {
         const std::function<void()>& onCreate = {},
         const std::function<void()>& onBack = {}
     ) {
-        ImGui::Begin("Stwórz serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         ImGui::SetWindowSize({400, 300});
         ImGui::SetWindowPos(
             ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
             ImGuiCond_Once
         );
 
+        ImGui::Begin("Stwórz serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         Atoms::Text("Stwórz swój serwer", theme, 0);
         ImGui::Spacing();
 
@@ -183,9 +187,9 @@ namespace Views {
         const Theme& theme,
         const std::function<void(const std::string&)>& onSendMessage = {}
     ) {
-        ImGui::Begin("EchoHub - Serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         ImGui::SetWindowSize(ImGui::GetIO().DisplaySize);
 
+        ImGui::Begin("EchoHub - Serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         // 1. ServerSidebar (ikony serwerów)
         ImGui::BeginChild("ServerSidebar", {72, -1}, true);
         Molecules::ServerIcon("DM", theme, false);
@@ -246,13 +250,13 @@ namespace Views {
         const Theme& theme,
         const std::function<void()>& onSave = {}
     ) {
-        ImGui::Begin("Ustawienia użytkownika", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         ImGui::SetWindowSize({800, 600});
         ImGui::SetWindowPos(
             ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
             ImGuiCond_Once
         );
 
+        ImGui::Begin("Ustawienia użytkownika", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         // Sidebar
         ImGui::BeginChild("SettingsSidebar", {240, -1}, true);
         Atoms::Text("Ustawienia użytkownika", theme, 0);
@@ -300,13 +304,13 @@ namespace Views {
         const Theme& theme,
         const std::function<void()>& onSave = {}
     ) {
-        ImGui::Begin("Ustawienia serwera", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         ImGui::SetWindowSize({800, 600});
         ImGui::SetWindowPos(
             ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
             ImGuiCond_Once
         );
 
+        ImGui::Begin("Ustawienia serwera", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         // Sidebar
         ImGui::BeginChild("SettingsSidebar", {240, -1}, true);
         Atoms::Text("Ustawienia serwera", theme, 0);
@@ -352,13 +356,13 @@ namespace Views {
     }
 
     inline void ConnectingLoadingView(const Theme& theme) {
-        ImGui::Begin("Nawiązywanie połączenia", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         ImGui::SetWindowSize({400, 200});
         ImGui::SetWindowPos(
             ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
             ImGuiCond_Once
         );
 
+        ImGui::Begin("Nawiązywanie połączenia", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         // Spinner (złoty)
         ImGui::PushStyleColor(ImGuiCol_Button, theme.primary);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, theme.primaryHovered);
@@ -378,13 +382,13 @@ namespace Views {
         const std::function<void()>& onReconnect = {},
         const std::function<void()>& onBackToMain = {}
     ) {
-        ImGui::Begin("Połączenie przerwane", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         ImGui::SetWindowSize({400, 200});
         ImGui::SetWindowPos(
             ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
             ImGuiCond_Once
         );
 
+        ImGui::Begin("Połączenie przerwane", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
         Atoms::Text("Połączenie przerwane", theme, 3); // 3 = error color
         ImGui::Spacing();
         Atoms::Text("Wystąpił błąd sieciowy (WSAECONNRESET). Serwer zdalny zamknął połączenie.", theme, 1);

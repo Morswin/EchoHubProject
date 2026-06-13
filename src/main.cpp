@@ -19,85 +19,81 @@
 // #include "ui/theme.hpp"
 // #include "ui/atoms.hpp"
 #include "ui/views.hpp"
+#include "view_states.hpp"
 
 
-/**
- * @brief A way to describe a view state in 1 enum.
- *
- * This doesn't include the data, and that's why ViewState class exists.
- * I'll use this docstring for planning out the initial set of views.
- * TODO: Remove this part of docstring once the initial set of views is implemented. This part of docstring may not be needed by then.
- *
- * LANDING_VIEW:
- *  Whenever you open the app, this is the entry view for the program.
- * CONNECT_TO_NEW_SERVER_VIEW:
- *  Here user may provide data required for a connecting to an already existing server.
- * CREATE_NEW_SERVER_VIEW:
- *  Here user may set up a new server.
- * SERVER_VIEW:
- *  Displays relevant info about server that the user is currently connected to.
- *  Contains channel selection section and chat section (if a text channel has been selected)
- * USER_SETTINGS_VIEW:
- *  Here user should be able to define or configure their profile.
- * SERVER_SETTINGS_VIEW:
- *  Here a server owner will be able to configure server settings.
- */
-enum class EViewState {
-    AUTH_VIEW,                  // Logowanie i rejestracja
-    LANDING_VIEW,               // Ekran startowy / Dashboard
-    FRIENDS_LIST_VIEW,          // Lista znajomych i czaty DM (Direct Messages)
-    CONNECT_TO_NEW_SERVER_VIEW, // Dołączanie do serwera przez kod/IP
-    CREATE_NEW_SERVER_VIEW,     // Tworzenie nowego serwera
-    CONNECTING_LOADING_VIEW,    // Ekran ładowania podczas połączenia
-    SERVER_VIEW,                // Główny widok serwera (kanały + czat)
-    USER_SETTINGS_VIEW,         // Ustawienia profilu / audio
-    SERVER_SETTINGS_VIEW,       // Zarządzanie serwerem (role, nazwa)
-    ERROR_DISCONNECTED_VIEW     // Błędy sieciowe i utrata połączenia
-};
+// /**
+//  * @brief This is a container for data regarding a view state.
+//  *
+//  * Depending on a EViewState, ViewStateManager will be expecting different fields to be filled with data.
+//  */
+// class ViewState {
+// private:
+//     EViewState m_EViewState;
+// public:
+//
+// };
+//
+// /**
+//  * @brief This is supposed to contain what view should the app be showing at a given moment.
+//  *
+//  * This should be the sole and only source of truth about the view state.
+//  */
+// class ViewStateManager {
+// private:
+//     ViewState m_ViewState;
+// public:
+//
+// };
 
-
-/**
- * @brief This is a container for data regarding a view state.
- *
- * Depending on a EViewState, ViewStateManager will be expecting different fields to be filled with data.
- */
-class ViewState {
-private:
-    EViewState m_EViewState;
-public:
-
-};
-
-/**
- * @brief This is supposed to contain what view should the app be showing at a given moment.
- *
- * This should be the sole and only source of truth about the view state.
- */
-class ViewStateManager {
-private:
-    ViewState m_ViewState;
-public:
-
-};
-
-Theme theme = Theme::createGoldGalaxyTheme();
+// APP STATE
 
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
 
-std::string email;
-std::string password;
+// --- 3. Stan aplikacji ---
+EViewState currentView = EViewState::AUTH_VIEW; // Startujemy od AuthView
 
-std::vector<Message> messages = {
-    {"Message 1", "User 1"},
-    {"Message 2", "User 2"},
-    {"Message 3", "User 1"},
-    {"Message 4", "User 2"},
-    {"Message 5", "User 3"},
-    {"Message 6", "User 1"},
-    {"Message 7", "User 2"},
+// Stan dla każdego widoku
+std::string email, password;
+std::string serverAddress, nickname;
+std::string serverName, region;
+std::string chatInput;
+std::string username = "User_C++";
+std::string selectedMic = "Default Microphone Input";
+std::string verificationLevel = "Brak (Dowolny użytkownik może wejść)";
+
+// Dane testowe (później zastąpione realnymi danymi)
+std::vector<Molecules::Friend> friends = {
+    {"JanKowalski", true},
+    {"Programista99", false}
 };
-static char message_buffer[1024] = "";
+std::vector<Views::Channel> channels = {
+    {"ogólny", "#", true},
+    {"pomoc-kod", "#", true},
+    {"Poczekalnia", "🔊", false},
+    {"Pokój gier", "🔊", false}
+};
+std::vector<Molecules::Message> messages = {
+    {"Admin", "Cześć! Witamy na klonie Discorda napisanym w C++.", "Dzisiaj o 12:00"},
+    {"User_C++", "Wygląda super, czat tekstowy i enumy działają stabilnie!", "Dzisiaj o 12:05"}
+};
+
+Theme theme = Theme::createGoldGalaxyTheme();
+// std::string email;
+// std::string password;
+
+// std::vector<Message> messages = {
+//     {"Message 1", "User 1"},
+//     {"Message 2", "User 2"},
+//     {"Message 3", "User 1"},
+//     {"Message 4", "User 2"},
+//     {"Message 5", "User 3"},
+//     {"Message 6", "User 1"},
+//     {"Message 7", "User 2"},
+// };
+// static char message_buffer[1024] = "";
+// APP STATE END
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     // Initializing window and renderer with SDL3
@@ -110,12 +106,27 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 
+    // --- 1. Inicjalizacja SDL3/ImGui ---
+    // SDL_Init(SDL_INIT_VIDEO);
+    // SDL_Window* window = SDL_CreateWindow("EchoHub", 1280, 720, SDL_WINDOW_RESIZABLE);
+    // SDL_Renderer* renderer = SDL_CreateRenderer(window, nullptr, SDL_RENDERER_ACCELERATED);
+    //
+    // ImGui::CreateContext();
+    // ImGui_ImplSDL3_InitForSDLRenderer(window);
+    // ImGui_ImplSDLRenderer3_Init(renderer);
+
     // 1. Załaduj fonty (MUSI BYĆ PRZED PIERWSZYM ImGui::NewFrame!)
     ImGuiIO& io = ImGui::GetIO();
 
     // Roboto (tekst)
     theme.fontRegular = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto-Black.ttf", 16.0f);
     theme.fontBold = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto-Bold.ttf", 16.0f);
+
+    // --- 2. Theme i fonty ---
+    // Theme theme;
+    // ImGuiIO& io = ImGui::GetIO();
+    // theme.fontRegular = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto-Regular.ttf", 16.0f);
+    // theme.fontBold = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto-Bold.ttf", 16.0f);
 
     return SDL_APP_CONTINUE;
 }
@@ -126,7 +137,80 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
-    Views::AuthView(email, password, theme);
+    // --- 5. System przełączania widoków ---
+        switch (currentView) {
+            case EViewState::AUTH_VIEW:
+                Views::AuthView(email, password, theme, [&]() {
+                    currentView = EViewState::LANDING_VIEW; // Po zalogowaniu
+                });
+                break;
+
+            case EViewState::LANDING_VIEW:
+                Views::LandingView(theme,
+                    [&]() { currentView = EViewState::FRIENDS_LIST_VIEW; },
+                    [&]() { currentView = EViewState::CONNECT_TO_NEW_SERVER_VIEW; },
+                    [&]() { currentView = EViewState::CREATE_NEW_SERVER_VIEW; }
+                );
+                break;
+
+            case EViewState::FRIENDS_LIST_VIEW:
+                Views::FriendsListView(friends, theme);
+                break;
+
+            case EViewState::CONNECT_TO_NEW_SERVER_VIEW:
+                Views::ConnectToNewServerView(serverAddress, nickname, theme,
+                    [&]() { currentView = EViewState::CONNECTING_LOADING_VIEW; },
+                    [&]() { currentView = EViewState::LANDING_VIEW; }
+                );
+                break;
+
+            case EViewState::CREATE_NEW_SERVER_VIEW:
+                Views::CreateNewServerView(serverName, region, theme,
+                    [&]() { currentView = EViewState::CONNECTING_LOADING_VIEW; },
+                    [&]() { currentView = EViewState::LANDING_VIEW; }
+                );
+                break;
+
+            case EViewState::SERVER_VIEW:
+                Views::ServerView("Mój Serwer C++", channels, messages, chatInput, theme,
+                    [&](const std::string& msg) {
+                        messages.push_back({username, msg, "Teraz"});
+                        chatInput.clear();
+                    }
+                );
+                break;
+
+            case EViewState::USER_SETTINGS_VIEW:
+                Views::UserSettingsView(username, selectedMic, theme,
+                    [&]() { currentView = EViewState::LANDING_VIEW; }
+                );
+                break;
+
+            case EViewState::SERVER_SETTINGS_VIEW:
+                Views::ServerSettingsView(serverName, verificationLevel, theme,
+                    [&]() { currentView = EViewState::SERVER_VIEW; }
+                );
+                break;
+
+            case EViewState::CONNECTING_LOADING_VIEW:
+                Views::ConnectingLoadingView(theme);
+                // Symuluj połączenie (później zastąp realną logiką)
+                static int counter = 0;
+                if (counter++ > 60) { // Po 60 klatkach (ok. 1s)
+                    currentView = EViewState::SERVER_VIEW;
+                    counter = 0;
+                }
+                break;
+
+            case EViewState::ERROR_DISCONNECTED_VIEW:
+                Views::ErrorDisconnectedView(theme,
+                    [&]() { currentView = EViewState::CONNECTING_LOADING_VIEW; },
+                    [&]() { currentView = EViewState::LANDING_VIEW; }
+                );
+                break;
+        }
+
+    // Views::AuthView(email, password, theme);
 
     // // The actual contents of the window
     // int main_window_w, main_window_h;
