@@ -79,7 +79,10 @@ namespace Views {
 
     inline void FriendsListView(
         const std::vector<Molecules::Friend>& friends,
-        const Theme& theme
+        const Theme& theme,
+        const std::function<void()>& onCreateServer = {},
+        const std::function<void(const std::string&)>& onConnectToServer = {},
+        const std::function<void()>& onDirectMessage = {}
     ) {
         // Grid: [ServerSidebar | SubSidebar | MainContent]
         ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
@@ -88,8 +91,8 @@ namespace Views {
 
         // 1. ServerSidebar (ikony)
         ImGui::BeginChild("ServerSidebar", {72, -1}, true);
-        Molecules::ServerIcon("DM", theme, true); // Aktywny
-        Molecules::ServerIcon("+", theme, false);
+        Molecules::ServerIcon("DM", theme, true, onDirectMessage);
+        Molecules::ServerIcon("+", theme, false, onCreateServer);
         ImGui::EndChild();
         ImGui::SameLine();
 

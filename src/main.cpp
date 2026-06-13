@@ -16,35 +16,9 @@
 
 #include "message.hpp"
 // #include "ThreadSafeQueue.hpp"
-// #include "ui/theme.hpp"
-// #include "ui/atoms.hpp"
 #include "ui/views.hpp"
 #include "view_states.hpp"
 
-
-// /**
-//  * @brief This is a container for data regarding a view state.
-//  *
-//  * Depending on a EViewState, ViewStateManager will be expecting different fields to be filled with data.
-//  */
-// class ViewState {
-// private:
-//     EViewState m_EViewState;
-// public:
-//
-// };
-//
-// /**
-//  * @brief This is supposed to contain what view should the app be showing at a given moment.
-//  *
-//  * This should be the sole and only source of truth about the view state.
-//  */
-// class ViewStateManager {
-// private:
-//     ViewState m_ViewState;
-// public:
-//
-// };
 
 // APP STATE
 
@@ -81,18 +55,7 @@ std::vector<Molecules::Message> messages = {
 };
 
 Theme theme = Theme::createGoldGalaxyTheme();
-// std::string email;
-// std::string password;
 
-// std::vector<Message> messages = {
-//     {"Message 1", "User 1"},
-//     {"Message 2", "User 2"},
-//     {"Message 3", "User 1"},
-//     {"Message 4", "User 2"},
-//     {"Message 5", "User 3"},
-//     {"Message 6", "User 1"},
-//     {"Message 7", "User 2"},
-// };
 // static char message_buffer[1024] = "";
 // APP STATE END
 
@@ -107,27 +70,12 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 
-    // --- 1. Inicjalizacja SDL3/ImGui ---
-    // SDL_Init(SDL_INIT_VIDEO);
-    // SDL_Window* window = SDL_CreateWindow("EchoHub", 1280, 720, SDL_WINDOW_RESIZABLE);
-    // SDL_Renderer* renderer = SDL_CreateRenderer(window, nullptr, SDL_RENDERER_ACCELERATED);
-    //
-    // ImGui::CreateContext();
-    // ImGui_ImplSDL3_InitForSDLRenderer(window);
-    // ImGui_ImplSDLRenderer3_Init(renderer);
-
     // 1. Załaduj fonty (MUSI BYĆ PRZED PIERWSZYM ImGui::NewFrame!)
     ImGuiIO& io = ImGui::GetIO();
 
     // Roboto (tekst)
     theme.fontRegular = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto-Black.ttf", 16.0f);
     theme.fontBold = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto-Bold.ttf", 16.0f);
-
-    // --- 2. Theme i fonty ---
-    // Theme theme;
-    // ImGuiIO& io = ImGui::GetIO();
-    // theme.fontRegular = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto-Regular.ttf", 16.0f);
-    // theme.fontBold = io.Fonts->AddFontFromFileTTF("assets/fonts/Roboto-Bold.ttf", 16.0f);
 
     return SDL_APP_CONTINUE;
 }
@@ -156,7 +104,13 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                 break;
 
             case EViewState::FRIENDS_LIST_VIEW:
-                Views::FriendsListView(friends, theme);
+                Views::FriendsListView(friends, theme,
+                    [&]() { currentView = EViewState::CREATE_NEW_SERVER_VIEW; },
+                    [&](const std::string& serverId) {
+                        currentView = EViewState::SERVER_VIEW;
+                    },
+                    [&]() { currentView = EViewState::FRIENDS_LIST_VIEW; }
+                );
                 break;
 
             case EViewState::CONNECT_TO_NEW_SERVER_VIEW:
@@ -181,7 +135,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                     },
                     [&]() { currentView = EViewState::CREATE_NEW_SERVER_VIEW; },
                     [&](const std::string& serverId) {
-                        currentView = EViewState::SERVER_VIEW;  // Tutaj dodasz logikę połączenia
+                        currentView = EViewState::SERVER_VIEW;
                     },
                     [&]() { currentView = EViewState::FRIENDS_LIST_VIEW; }
                 );
@@ -228,57 +182,6 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                 );
                 break;
         }
-
-    // Views::AuthView(email, password, theme);
-
-    // // The actual contents of the window
-    // int main_window_w, main_window_h;
-    // SDL_GetWindowSize(window, &main_window_w, &main_window_h);
-    // ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w), static_cast<float>(main_window_h)));
-    // ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
-    // if (ImGui::Begin("EchoHubRoot", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
-    //     ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f));
-    //     ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 4.0f, static_cast<float>(main_window_h)));
-    //     if (ImGui::Begin("EchoHubNavigation", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-    //         ImGui::Text("Navigation");
-    //     } ImGui::End();
-    //     ImGui::SameLine();
-    //     ImGui::SetNextWindowPos(ImVec2((static_cast<float>(main_window_w) / 4.0f), 0.0f));
-    //     ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 2.0f, static_cast<float>(main_window_h)));
-    //     if (ImGui::Begin("EchoHubContent", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-    //         if (Atoms::Button("Zaloguj się", theme, {200, 40})) {
-    //             // Obsługa logowania
-    //         }
-    //         if (ImGui::BeginChild("Messages", ImVec2(0.0f, -60.0f), false)) {
-    //             for (Message& message : messages) {
-    //                 if (ImGui::BeginChild(std::format("Message-{}", message.GetID()).c_str(), ImVec2(0.0f, 50.0f), true)) {
-    //                     ImGui::Text("%s", message.GetAuthor().c_str());
-    //                     ImGui::SameLine();
-    //                     ImGui::Text("%s", message.GetDataTime().c_str());
-    //                     ImGui::Text("%s", message.GetContent().c_str());
-    //                 } ImGui::EndChild();
-    //             }
-    //         }
-    //         ImGui::EndChild();
-    //         if (ImGui::BeginChild("NewMessageInput", ImVec2(0.0f, 45), false)) {
-    //             if (ImGui::InputText("##message_input", message_buffer, IM_ARRAYSIZE(message_buffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
-    //                 // Message is being sent
-    //                 SDL_Log("%s", message_buffer);
-    //                 message_buffer[0] = '\0';
-    //             }
-    //             ImGui::SameLine();
-    //             if (ImGui::Button("Send")) {
-    //                 SDL_Log("%s", message_buffer);
-    //             }
-    //         } ImGui::EndChild();
-    //     } ImGui::End();
-    //     ImGui::SameLine();
-    //     ImGui::SetNextWindowPos(ImVec2((static_cast<float>(main_window_w) / 4.0f * 3.0f), 0.0f));
-    //     ImGui::SetNextWindowSize(ImVec2(static_cast<float>(main_window_w) / 4.0f, static_cast<float>(main_window_h)));
-    //     if (ImGui::Begin("EchoHubDetails", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-    //         ImGui::Text("Details");
-    //     } ImGui::End();
-    // } ImGui::End();
 
     // Rendering background
     SDL_SetRenderDrawColor(renderer, 33, 33, 33, 255);
