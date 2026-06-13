@@ -29,7 +29,7 @@ namespace Views {
             ImGuiCond_Appearing
         );
 
-        ImGui::Begin("EchoHub - Logowanie", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+        ImGui::Begin("EchoHub - Logowanie", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         Atoms::Text("Witamy ponownie!", theme, 0);
         ImGui::Spacing();
 
@@ -60,7 +60,7 @@ namespace Views {
             ImGuiCond_Appearing
         );
 
-        ImGui::Begin("EchoHub", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+        ImGui::Begin("EchoHub", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         Atoms::Text("Klon Discord/TeamSpeak", theme, 0);
         ImGui::Spacing();
         Atoms::Text("Nie jesteś połączony z żadnym serwerem. Co chcesz zrobić?", theme, 1);
@@ -81,7 +81,7 @@ namespace Views {
     ) {
         // Grid: [ServerSidebar | SubSidebar | MainContent]
         ImGui::SetWindowSize(ImGui::GetIO().DisplaySize);
-        ImGui::Begin("EchoHub - Znajomi", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+        ImGui::Begin("EchoHub - Znajomi", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
         // 1. ServerSidebar (ikony)
         ImGui::BeginChild("ServerSidebar", {72, -1}, true);
@@ -121,7 +121,7 @@ namespace Views {
             ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
             ImGuiCond_Once
         );
-        ImGui::Begin("Dołącz do serwera", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+        ImGui::Begin("Dołącz do serwera", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
         Atoms::Text("Dołącz do serwera", theme, 0);
         ImGui::Spacing();
@@ -151,7 +151,7 @@ namespace Views {
             ImGuiCond_Once
         );
 
-        ImGui::Begin("Stwórz serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+        ImGui::Begin("Stwórz serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         Atoms::Text("Stwórz swój serwer", theme, 0);
         ImGui::Spacing();
 
@@ -189,7 +189,7 @@ namespace Views {
     ) {
         ImGui::SetWindowSize(ImGui::GetIO().DisplaySize);
 
-        ImGui::Begin("EchoHub - Serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+        ImGui::Begin("EchoHub - Serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         // 1. ServerSidebar (ikony serwerów)
         ImGui::BeginChild("ServerSidebar", {72, -1}, true);
         Molecules::ServerIcon("DM", theme, false);
@@ -256,7 +256,7 @@ namespace Views {
             ImGuiCond_Once
         );
 
-        ImGui::Begin("Ustawienia użytkownika", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+        ImGui::Begin("Ustawienia użytkownika", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         // Sidebar
         ImGui::BeginChild("SettingsSidebar", {240, -1}, true);
         Atoms::Text("Ustawienia użytkownika", theme, 0);
@@ -310,7 +310,7 @@ namespace Views {
             ImGuiCond_Once
         );
 
-        ImGui::Begin("Ustawienia serwera", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+        ImGui::Begin("Ustawienia serwera", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         // Sidebar
         ImGui::BeginChild("SettingsSidebar", {240, -1}, true);
         Atoms::Text("Ustawienia serwera", theme, 0);
@@ -362,7 +362,7 @@ namespace Views {
             ImGuiCond_Once
         );
 
-        ImGui::Begin("Nawiązywanie połączenia", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+        ImGui::Begin("Nawiązywanie połączenia", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         // Spinner (złoty)
         ImGui::PushStyleColor(ImGuiCol_Button, theme.primary);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, theme.primaryHovered);
@@ -388,7 +388,7 @@ namespace Views {
             ImGuiCond_Once
         );
 
-        ImGui::Begin("Połączenie przerwane", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+        ImGui::Begin("Połączenie przerwane", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         Atoms::Text("Połączenie przerwane", theme, 3); // 3 = error color
         ImGui::Spacing();
         Atoms::Text("Wystąpił błąd sieciowy (WSAECONNRESET). Serwer zdalny zamknął połączenie.", theme, 1);
