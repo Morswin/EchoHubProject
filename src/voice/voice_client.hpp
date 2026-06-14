@@ -122,9 +122,6 @@ private:
     // --- Working Buffers ---
     std::vector<float> pcmBuffer;
     std::vector<float> playbackBuffer_;
-
-    // --- Thread Functions ---
-    void voiceThreadFunction();
 };
 
 #endif // ECHOHUB_VOICE_CLIENT_HPP

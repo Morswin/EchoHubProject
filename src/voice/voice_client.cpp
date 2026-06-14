@@ -8,25 +8,8 @@ VoiceClient::VoiceClient() : pcmBuffer(FRAME_SIZE), playbackBuffer_(FRAME_SIZE) 
 }
 
 VoiceClient::~VoiceClient() {
-    // Signal the voice thread to stop
-    stopRequested_ = true;
-    running_ = false;
-    
-    // Request stop via stop_token (if jthread is still active)
-    if (voiceThread_.joinable()) {
-        voiceThread_.request_stop();
-        
-        // Wait briefly for thread to stop
-        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-        while (voiceThread_.joinable() && 
-               std::chrono::steady_clock::now() - start < std::chrono::milliseconds(200)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
-        
-        if (voiceThread_.joinable()) {
-            std::cerr << "[VOICE] Warning: Voice thread still running in destructor, jthread will attempt join" << std::endl;
-        }
-    }
+    // Use stop() which properly signals the thread and waits
+    stop();
     
     // Then shutdown audio resources
     shutdown();
@@ -122,17 +105,10 @@ bool VoiceClient::initialize() {
 
 void VoiceClient::shutdown() {
     // Stop the voice thread first (if running)
+    // Note: stop() already unbinds streams, so we don't need to do it again here
     stop();
     
-    // Unbind streams from devices first
-    if (micStream) {
-        SDL_UnbindAudioStream(micStream);
-    }
-    if (speakerStream) {
-        SDL_UnbindAudioStream(speakerStream);
-    }
-    
-    // Destroy streams
+    // Destroy streams (already unbound by stop())
     if (micStream) {
         SDL_DestroyAudioStream(micStream);
         micStream = nullptr;
@@ -258,25 +234,27 @@ bool VoiceClient::start(VoicePacketCallback onVoicePacket, std::function<bool()>
 void VoiceClient::stop() {
     if (!running_) return;
 
+    // Signal the thread to stop FIRST
+    // The thread will unbind streams itself when it sees the signal
+    std::cout << "[VOICE] Signaling thread to stop..." << std::endl;
     stopRequested_ = true;
     running_ = false;
     
-    // Request stop via stop_token
     if (voiceThread_.joinable()) {
         voiceThread_.request_stop();
         
         // Wait for thread to stop with timeout
         std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
         while (voiceThread_.joinable() && 
-               std::chrono::steady_clock::now() - start < std::chrono::milliseconds(200)) {
+               std::chrono::steady_clock::now() - start < std::chrono::milliseconds(500)) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
         
-        // If still joinable after timeout, the thread is stuck
-        // jthread will still try to join in its destructor, but we warn
         if (voiceThread_.joinable()) {
-            std::cerr << "[VOICE] Warning: Voice thread did not stop within 200ms, may be stuck in SDL operation" << std::endl;
-            // jthread destructor will still attempt to join
+            std::cerr << "[VOICE] ERROR: Voice thread did not stop within 500ms!" << std::endl;
+            std::cerr << "[VOICE] This may cause issues on program exit." << std::endl;
+        } else {
+            std::cout << "[VOICE] Thread stopped successfully" << std::endl;
         }
     }
     
@@ -293,50 +271,40 @@ void VoiceClient::voiceThreadFunction(std::stop_token stopToken) {
     std::cout << "[VOICE THREAD] Started" << std::endl;
     
     while (!stopToken.stop_requested() && !stopRequested_ && running_) {
-        std::cout << "[VOICE THREAD] Loop iteration starting" << std::endl;
-        
         // 1. Process incoming voice packets (decode and queue for playback)
         std::vector<uint8_t> incomingPacket;
         if (incomingVoicePackets_.tryPop(incomingPacket)) {
-            std::cout << "[VOICE THREAD] Processing incoming packet (size: " << incomingPacket.size() << ")" << std::endl;
             decodeAndPlay(incomingPacket);
-            std::cout << "[VOICE THREAD] Finished processing incoming packet" << std::endl;
         }
         
         // 2. Process captured audio (encode and send)
         std::vector<uint8_t> encodedPacket;
         if (recordAndEncode(encodedPacket)) {
-            std::cout << "[VOICE THREAD] Recorded and encoded packet (size: " << encodedPacket.size() << ")" << std::endl;
-            
             // Only send if we should (e.g., there are other users in the channel)
-            if (shouldSendPacketCallback_()) {
-                std::cout << "[VOICE THREAD] Should send packet: yes" << std::endl;
-                // Send the packet via callback
-                if (onVoicePacketCallback_) {
-                    std::cout << "[VOICE THREAD] Calling onVoicePacketCallback" << std::endl;
-                    onVoicePacketCallback_(encodedPacket);
-                    std::cout << "[VOICE THREAD] onVoicePacketCallback returned" << std::endl;
-                }
-            } else {
-                std::cout << "[VOICE THREAD] Should send packet: no (alone in channel?)" << std::endl;
+            if (shouldSendPacketCallback_() && onVoicePacketCallback_) {
+                onVoicePacketCallback_(encodedPacket);
             }
         }
         
         // 3. Process playback queue (send to speaker)
         std::vector<float> playbackFrame;
         if (playbackAudioQueue_.tryPop(playbackFrame)) {
-            std::cout << "[VOICE THREAD] Playing back audio frame (size: " << playbackFrame.size() << ")" << std::endl;
             if (speakerStream) {
-                std::cout << "[VOICE THREAD] Calling SDL_PutAudioStreamData" << std::endl;
                 SDL_PutAudioStreamData(speakerStream, playbackFrame.data(), playbackFrame.size() * sizeof(float));
-                std::cout << "[VOICE THREAD] SDL_PutAudioStreamData returned" << std::endl;
             }
         }
         
-        std::cout << "[VOICE THREAD] Loop iteration completed" << std::endl;
         // 4. Small sleep to prevent CPU overload
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     
-    std::cout << "[VOICE THREAD] Exiting (stop requested: " << stopToken.stop_requested() << ", running: " << running_ << ")" << std::endl;
+    // Clean up: Unbind streams in the voice thread itself to avoid race conditions
+    std::cout << "[VOICE THREAD] Exiting, unbinding streams..." << std::endl;
+    if (micStream) {
+        SDL_UnbindAudioStream(micStream);
+    }
+    if (speakerStream) {
+        SDL_UnbindAudioStream(speakerStream);
+    }
+    std::cout << "[VOICE THREAD] Exited cleanly" << std::endl;
 }
