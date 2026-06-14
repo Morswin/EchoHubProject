@@ -197,9 +197,18 @@ void VoiceClient::stop() {
     stopRequested_ = true;
     running_ = false;
     
-    // Close audio devices to unblock any SDL operations in the voice thread
-    // This will cause SDL_GetAudioStreamData/SDL_PutAudioStreamData to fail immediately
-    std::cout << "[VOICE] Closing audio devices to unblock thread..." << std::endl;
+    // 1. FIRST: Unbind streams to unblock SDL operations
+    // This will cause SDL_GetAudioStreamData/SDL_PutAudioStreamData to return error instead of blocking
+    std::cout << "[VOICE] Unbinding streams..." << std::endl;
+    if (micStream) {
+        SDL_UnbindAudioStream(micStream);
+    }
+    if (speakerStream) {
+        SDL_UnbindAudioStream(speakerStream);
+    }
+    
+    // 2. THEN: Close audio devices
+    std::cout << "[VOICE] Closing audio devices..." << std::endl;
     if (micDeviceId_ != 0) {
         SDL_CloseAudioDevice(micDeviceId_);
         micDeviceId_ = 0;
@@ -209,6 +218,7 @@ void VoiceClient::stop() {
         speakerDeviceId_ = 0;
     }
     
+    // 3. FINALLY: Stop the thread
     if (voiceThread_.joinable()) {
         voiceThread_.request_stop();
         
@@ -222,7 +232,6 @@ void VoiceClient::stop() {
         if (voiceThread_.joinable()) {
             std::cerr << "[VOICE] ERROR: Voice thread did not stop within 500ms!" << std::endl;
             std::cerr << "[VOICE] Force stopping..." << std::endl;
-            // If thread is still running, it's stuck - we'll let jthread handle it
         } else {
             std::cout << "[VOICE] Thread stopped successfully" << std::endl;
         }
