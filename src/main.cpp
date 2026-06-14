@@ -394,6 +394,22 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 }
 
 void SDL_AppQuit(void *appstate, SDL_AppResult result) {
+    // Stop voice client BEFORE SDL_Quit to avoid mutex issues
+    if (g_AppState.voiceClient) {
+        g_AppState.voiceClient->stop();
+        g_AppState.voiceClient.reset();
+    }
+    
+    // Stop server and client
+    if (g_AppState.server) {
+        g_AppState.server->stop();
+        g_AppState.server.reset();
+    }
+    if (g_AppState.client) {
+        g_AppState.client->disconnect();
+        g_AppState.client.reset();
+    }
+    
     ImGui_ImplSDLRenderer3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
