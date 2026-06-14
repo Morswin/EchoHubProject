@@ -75,16 +75,18 @@ namespace Views {
     }
 
     inline void LandingView(
+            const std::string& username,
             const Theme& theme,
             const std::function<void()>& onFriendsList = {},
             const std::function<void()>& onConnectToServer = {},
-            const std::function<void()>& onCreateServer = {}
+            const std::function<void()>& onCreateServer = {},
+            const std::function<void()>& onUserSettings = {}
         ) {
         ImGui::SetNextWindowSize({400, 300});
         ImGui::SetNextWindowPos(CenteredPosition({400, 300}), ImGuiCond_Always);
 
         ImGui::Begin("EchoHub", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
-        Atoms::Text("Klon Discord/TeamSpeak", theme, 0);
+        Atoms::Text("Witamy, " + username + "!", theme, 0);
         ImGui::Spacing();
         Atoms::Text("Nie jesteś połączony z żadnym serwerem. Co chcesz zrobić?", theme, 1);
         ImGui::Spacing();
@@ -94,6 +96,8 @@ namespace Views {
         if (Atoms::Button("Dołącz do istniejącego serwera", theme, {200, 40}, onConnectToServer)) {}
         ImGui::Spacing();
         if (Atoms::Button("Stwórz nowy serwer", theme, {200, 40}, onCreateServer)) {}
+        ImGui::Spacing();
+        if (Atoms::Button("Ustawienia użytkownika", theme, {200, 40}, onUserSettings)) {}
 
         ImGui::End();
     }
@@ -200,12 +204,14 @@ namespace Views {
         const std::string& currentVoiceChannel,
         bool isVoiceActive,
         const std::vector<std::string>& usersInChannel,
+        const std::vector<std::string>& savedServers,
         const std::function<void(const std::string&)>& onSendMessage = {},
         const std::function<void()>& onCreateServer = {},
         const std::function<void(const std::string&)>& onConnectToServer = {},
         const std::function<void()>& onDirectMessage = {},
         const std::function<void(const std::string&, bool)>& onSwitchChannel = {},
-        const std::function<void()>& onCreateChannel = {}
+        const std::function<void()>& onCreateChannel = {},
+        const std::function<void()>& onDisconnectVoice = {}
     ) {
         ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
         ImGui::SetNextWindowPos({0, 0});
@@ -217,6 +223,15 @@ namespace Views {
         Molecules::ServerIcon("DM", theme, false, [&]() {
             if (onDirectMessage) onDirectMessage();
         });
+        
+        // Display saved servers
+        for (const auto& savedServer : savedServers) {
+            Molecules::ServerIcon(savedServer.substr(0, 2), theme, false, [&, server = savedServer]() {
+                if (onConnectToServer) onConnectToServer(server);
+            });
+        }
+        
+        // Current server (active)
         Molecules::ServerIcon(serverName.substr(0, 2), theme, true);
         Molecules::ServerIcon("+", theme, false, onCreateServer);
         // Add button to connect to existing server
@@ -277,6 +292,8 @@ namespace Views {
             ImGui::PopStyleColor();
             ImGui::SameLine();
             Atoms::Text("Aktywny", theme, 2);
+            ImGui::SameLine();
+            if (Atoms::Button("🔴 Rozłącz", theme, {0, 20}, onDisconnectVoice)) {}
         }
         ImGui::EndGroup();
         Atoms::Separator(theme);

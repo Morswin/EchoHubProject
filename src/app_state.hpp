@@ -35,6 +35,9 @@ public:
     std::string selectedMic = "Default Microphone Input";
     std::string verificationLevel = "Brak (Dowolny użytkownik może wejść)";
     
+    // --- Saved Servers ---
+    std::vector<std::string> savedServers;
+    
     // --- Channel Creation ---
     std::string newChannelName;
     bool newChannelIsText = true;
@@ -95,6 +98,13 @@ public:
     void stopVoice();
     void toggleVoice(const std::string& channel);
 
+    // --- Server Management ---
+    void addSavedServer(const std::string& serverName) {
+        if (std::find(savedServers.begin(), savedServers.end(), serverName) == savedServers.end()) {
+            savedServers.push_back(serverName);
+        }
+    }
+    
     // --- Gettery/Settery ---
     [[nodiscard]] EViewState getCurrentView() const { return currentView; }
     void setCurrentView(EViewState view) { currentView = view; }
@@ -133,6 +143,8 @@ public:
     
     [[nodiscard]] bool getIsConnecting() const { return isConnecting; }
     void setIsConnecting(bool connecting) { isConnecting = connecting; }
+    
+    [[nodiscard]] const std::vector<std::string>& getSavedServers() const { return savedServers; }
 };
 
 #endif //ECHOHUBPROJECT_APP_STATE_HPP

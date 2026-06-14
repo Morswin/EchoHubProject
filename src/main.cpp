@@ -61,7 +61,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             break;
 
         case EViewState::LANDING_VIEW:
-            Views::LandingView(g_AppState.getTheme(),
+            Views::LandingView(g_AppState.getUsername(), g_AppState.getTheme(),
                 [&]() { g_AppState.setView(EViewState::FRIENDS_LIST_VIEW); },
                 [&]() { g_AppState.setView(EViewState::CONNECT_TO_NEW_SERVER_VIEW); },
                 [&]() { 
@@ -84,7 +84,8 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                     } else {
                         std::cerr << "[LANDING] ERROR: Server failed to start!" << std::endl;
                     }
-                }
+                },
+                [&]() { g_AppState.setView(EViewState::USER_SETTINGS_VIEW); }
             );
             break;
 
@@ -198,6 +199,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                 g_AppState.getCurrentVoiceChannelRef(),
                 g_AppState.getIsVoiceActive(),
                 g_AppState.getUsersInChannel(),
+                g_AppState.getSavedServers(),
                 [&](const std::string& msg) {
                     // Send message through network client if connected
                     if (g_AppState.client && g_AppState.client->isConnected()) {
@@ -221,6 +223,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                 [&]() {
                     // Create new channel
                     g_AppState.setView(EViewState::CREATE_CHANNEL_VIEW);
+                },
+                [&]() {
+                    // Disconnect from voice channel
+                    g_AppState.stopVoice();
                 }
             );
             break;

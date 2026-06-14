@@ -1,4 +1,5 @@
 #include "app_state.hpp"
+#include <iostream>
 #include <chrono>
 #include <iomanip>
 #include <sstream>
@@ -42,15 +43,19 @@ void AppState::setupNetworkCallbacks() {
 }
 
 void AppState::onTextMessageReceived(const Network::TextMessage& msg) {
-    // Add the message to the messages vector
-    messages.push_back({
-        msg.author,
-        msg.content,
-        msg.timestamp.empty() ? getCurrentTimestamp() : msg.timestamp
-    });
-    
-    // Update connection status
-    connectionStatus = "Message received from " + msg.author;
+    // Only add messages for the current channel
+    if (msg.channel == currentChannel) {
+        messages.push_back({
+            msg.author,
+            msg.content,
+            msg.timestamp.empty() ? getCurrentTimestamp() : msg.timestamp
+        });
+        
+        // Update connection status
+        connectionStatus = "Message received from " + msg.author + " on channel: " + msg.channel;
+    } else {
+        std::cout << "[MESSAGE] Received message for channel '" << msg.channel << "' but we're in '" << currentChannel << "' - ignoring" << std::endl;
+    }
 }
 
 void AppState::onVoicePacketReceived(const Network::VoicePacket& pkt) {
@@ -67,6 +72,11 @@ void AppState::onConnectionStatusChanged(bool connected, const std::string& mess
     connectionStatus = message;
     
     if (connected) {
+        // Save the server we connected to
+        if (!serverAddress.empty() && !serverName.empty()) {
+            addSavedServer(serverName);
+            std::cout << "[CONNECTION] Saved server: " << serverName << std::endl;
+        }
         // Connection successful - transition to server view
         currentView = EViewState::SERVER_VIEW;
     } else {
@@ -155,25 +165,49 @@ void AppState::createChannel(const std::string& channelName, bool isTextChannel)
 // --- Voice Controls ---
 
 void AppState::startVoice(const std::string& channel) {
-    if (isVoiceActive || !client || !client->isConnected()) {
+    std::cout << "[VOICE] startVoice('" << channel << "') called" << std::endl;
+    
+    if (isVoiceActive) {
+        std::cout << "[VOICE] Already active, skipping" << std::endl;
         return;
     }
     
+    if (!client) {
+        std::cerr << "[VOICE] ERROR: client is null!" << std::endl;
+        return;
+    }
+    
+    if (!client->isConnected()) {
+        std::cerr << "[VOICE] ERROR: client not connected!" << std::endl;
+        return;
+    }
+    
+    std::cout << "[VOICE] Client is connected, proceeding..." << std::endl;
+    
     // Initialize voice client if not already done (MUST be done in main thread)
     if (!voiceClient) {
+        std::cout << "[VOICE] Creating VoiceClient instance..." << std::endl;
         voiceClient = std::make_unique<VoiceClient>();
+        
+        std::cout << "[VOICE] Initializing VoiceClient..." << std::endl;
         if (!voiceClient->initialize()) {
+            std::cerr << "[VOICE] ERROR: Failed to initialize voice client!" << std::endl;
             connectionStatus = "Error: Failed to initialize voice client";
             voiceClient.reset();
             return;
         }
+        std::cout << "[VOICE] VoiceClient initialized successfully" << std::endl;
+    } else {
+        std::cout << "[VOICE] VoiceClient already initialized, reusing" << std::endl;
     }
     
     // Set the voice channel
+    std::cout << "[VOICE] Setting voice channel to: " << channel << std::endl;
     setCurrentVoiceChannel(channel);
     client->setVoiceChannel(channel);
     
     // Start voice client with callback to send packets via network
+    std::cout << "[VOICE] Starting voice thread..." << std::endl;
     isVoiceActive = voiceClient->start([this](const std::vector<uint8_t>& packet) {
         if (client && client->isConnected()) {
             client->sendVoicePacketUdp(packet);
@@ -181,20 +215,33 @@ void AppState::startVoice(const std::string& channel) {
     });
     
     if (isVoiceActive) {
+        std::cout << "[VOICE] SUCCESS: Voice active in channel: " << channel << std::endl;
         connectionStatus = "Voice active in channel: " + channel;
+    } else {
+        std::cerr << "[VOICE] ERROR: Failed to start voice thread!" << std::endl;
     }
 }
 
 void AppState::stopVoice() {
-    if (!isVoiceActive || !voiceClient) {
+    std::cout << "[VOICE] stopVoice() called" << std::endl;
+    
+    if (!isVoiceActive) {
+        std::cout << "[VOICE] Not active, skipping" << std::endl;
         return;
     }
     
+    if (!voiceClient) {
+        std::cerr << "[VOICE] ERROR: voiceClient is null!" << std::endl;
+        return;
+    }
+    
+    std::cout << "[VOICE] Stopping voice thread..." << std::endl;
     voiceClient->stop();
     // Don't call shutdown here - we want to keep the voice client initialized
     // for quick restart. Just stop the voice thread.
     isVoiceActive = false;
     setCurrentVoiceChannel("");
+    std::cout << "[VOICE] Voice stopped successfully" << std::endl;
     connectionStatus = "Voice stopped";
 }
 

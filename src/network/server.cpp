@@ -505,9 +505,13 @@ namespace Network {
         channels_[name] = {name, icon, isTextChannel, {}};
         
         std::cout << "[SERVER] Channel added. Broadcasting channel list to clients..." << std::endl;
-        // Notify all clients about the new channel list
-        broadcastChannelList();
-        std::cout << "[SERVER] Channel list broadcasted." << std::endl;
+        // Notify all clients about the new channel list (only if server is running)
+        if (running_) {
+            broadcastChannelList();
+            std::cout << "[SERVER] Channel list broadcasted." << std::endl;
+        } else {
+            std::cout << "[SERVER] Server not running yet, skipping broadcast." << std::endl;
+        }
     }
 
     std::vector<ChannelInfo> Server::getChannels() const {
