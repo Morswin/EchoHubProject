@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <thread>
+#include <stop_token>
 #include <atomic>
 #include <functional>
 #include <mutex>
@@ -191,8 +192,8 @@ namespace Network {
         std::unique_ptr<tcp::socket> tcpSocket_;
         std::unique_ptr<udp::socket> udpSocket_;
         udp::endpoint voiceEndpoint_;
-        std::thread clientThread_;
-        std::thread udpThread_;
+        std::jthread clientThread_;
+        std::jthread udpThread_;
         std::mutex udpSendMutex_; // Protect UDP send operations
 
         // --- Callbacks ---
@@ -206,7 +207,7 @@ namespace Network {
         ThreadSafeQueue<std::string> outgoingMessages_;
 
         // --- Client Operations ---
-        void run(); // Main client loop
+        void run(std::stop_token stopToken); // Main client loop
         void readMessages();
         void sendQueuedMessages();
 
@@ -227,7 +228,7 @@ namespace Network {
         // --- UDP Voice Methods ---
         void startUdpListener();
         void handleUdpPacket(const std::vector<uint8_t>& data, const udp::endpoint& endpoint);
-        void udpListenLoop();
+        void udpListenLoop(std::stop_token stopToken);
     };
 }
 

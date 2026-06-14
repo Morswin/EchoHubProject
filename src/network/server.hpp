@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <thread>
+#include <stop_token>
 #include <atomic>
 
 #include "protocol.hpp"
@@ -93,7 +94,7 @@ namespace Network {
         asio::io_context ioContext_;
         std::unique_ptr<tcp::acceptor> tcpAcceptor_;
         std::unique_ptr<udp::socket> udpSocket_;
-        std::thread serverThread_;
+        std::jthread serverThread_;
 
         // --- Client Management ---
         struct ClientInfo {
@@ -135,7 +136,7 @@ namespace Network {
         ThreadSafeQueue<std::pair<udp::endpoint, std::vector<uint8_t>>> incomingVoicePackets_;
 
         // --- Server Operations ---
-        void run(); // Main server loop
+        void run(std::stop_token stopToken); // Main server loop
         void acceptTcpConnections();
         void handleTcpClient(std::shared_ptr<tcp::socket> socket);
         void handleUdpPackets();

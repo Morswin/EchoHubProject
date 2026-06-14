@@ -23,7 +23,9 @@ namespace Network {
         }
 
         running_ = true;
-        serverThread_ = std::thread(&Server::run, this);
+        serverThread_ = std::jthread([this, stopToken = std::stop_token()]() {
+            run(stopToken);
+        });
         
         std::cout << "Server started on port " << port_ << " (TCP) and " << voicePort_ << " (UDP)" << std::endl;
         return true;
@@ -45,15 +47,16 @@ namespace Network {
             udpSocket_->close();
         }
         
-        // Join the server thread
+        // Request stop for jthread (it will auto-join in destructor)
         if (serverThread_.joinable()) {
-            serverThread_.join();
+            serverThread_.request_stop();
+            // jthread will auto-join when it finishes or when destructor is called
         }
         
         std::cout << "Server stopped" << std::endl;
     }
 
-    void Server::run() {
+    void Server::run(std::stop_token stopToken) {
         try {
             // Start accepting TCP connections
             acceptTcpConnections();
@@ -61,8 +64,10 @@ namespace Network {
             // Start handling UDP packets
             handleUdpPackets();
             
-            // Run the io_context
-            ioContext_.run();
+            // Run the io_context until stopped
+            while (!stopToken.stop_requested() && running_) {
+                ioContext_.run_one();
+            }
         } catch (const std::exception& e) {
             std::cerr << "Server error: " << e.what() << std::endl;
         }

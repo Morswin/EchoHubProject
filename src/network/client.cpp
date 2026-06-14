@@ -63,7 +63,9 @@ namespace Network {
             
             // Start the client thread
             connected_ = true;
-            clientThread_ = std::thread(&Client::run, this);
+            clientThread_ = std::jthread([this, stopToken = std::stop_token()]() {
+                run(stopToken);
+            });
             
             // Start UDP listener thread
             startUdpListener();
@@ -107,28 +109,29 @@ namespace Network {
             udpSocket_->close();
         }
         
-        // Join the client thread
+        // Request stop for jthreads (they will auto-join in destructor)
         if (clientThread_.joinable()) {
-            clientThread_.join();
+            clientThread_.request_stop();
         }
-        
-        // Join the UDP thread
         if (udpThread_.joinable()) {
-            udpThread_.join();
+            udpThread_.request_stop();
         }
+        // jthreads will auto-join when they finish or when destructors are called
         
         if (connectionCallback_) {
             connectionCallback_(false, "Disconnected from server");
         }
     }
 
-    void Client::run() {
+    void Client::run(std::stop_token stopToken) {
         try {
             // Start reading messages
             readMessages();
             
-            // Run the io_context
-            ioContext_.run();
+            // Run the io_context until stopped
+            while (!stopToken.stop_requested() && connected_) {
+                ioContext_.run_one();
+            }
         } catch (const std::exception& e) {
             std::cerr << "Client error: " << e.what() << std::endl;
             if (connectionCallback_) {
@@ -470,15 +473,17 @@ namespace Network {
             return; // Already running
         }
         
-        udpThread_ = std::thread(&Client::udpListenLoop, this);
+        udpThread_ = std::jthread([this, stopToken = std::stop_token()]() {
+            udpListenLoop(stopToken);
+        });
     }
 
-    void Client::udpListenLoop() {
+    void Client::udpListenLoop(std::stop_token stopToken) {
         try {
             std::vector<uint8_t> buffer(2048); // Max UDP packet size
             udp::endpoint remoteEndpoint;
             
-            while (connected_) {
+            while (!stopToken.stop_requested() && connected_) {
                 size_t bytesRead = udpSocket_->receive_from(
                     asio::buffer(buffer), 
                     remoteEndpoint,
