@@ -103,48 +103,6 @@ bool VoiceClient::initialize() {
     return true;
 }
 
-void VoiceClient::shutdown() {
-    // Stop the voice thread first (if running)
-    // Note: stop() already unbinds streams
-    stop();
-    
-    // Destroy streams (already unbound by stop())
-    if (micStream) {
-        SDL_DestroyAudioStream(micStream);
-        micStream = nullptr;
-    }
-    if (speakerStream) {
-        SDL_DestroyAudioStream(speakerStream);
-        speakerStream = nullptr;
-    }
-    
-    // Close audio devices
-    if (micDeviceId_ != 0) {
-        SDL_CloseAudioDevice(micDeviceId_);
-        micDeviceId_ = 0;
-    }
-    if (speakerDeviceId_ != 0) {
-        SDL_CloseAudioDevice(speakerDeviceId_);
-        speakerDeviceId_ = 0;
-    }
-    
-    // Clean up Opus codecs
-    if (encoder) {
-        opus_encoder_destroy(encoder);
-        encoder = nullptr;
-    }
-    if (decoder) {
-        opus_decoder_destroy(decoder);
-        decoder = nullptr;
-    }
-    
-    // Note: We don't quit SDL_INIT_AUDIO here because:
-    // 1. It was initialized in the main thread
-    // 2. Other components might need it
-    // 3. SDL_QuitSubSystem should be called from the main thread
-    // SDL audio will be properly cleaned up when the application exits
-}
-
 bool VoiceClient::recordAndEncode(std::vector<uint8_t>& outEncodedPacket) {
     if (!isInitialized() || !running_) {
         return false;
@@ -239,14 +197,16 @@ void VoiceClient::stop() {
     stopRequested_ = true;
     running_ = false;
     
-    // Unbind streams to unblock any SDL operations in the voice thread
-    // This is safe to do from any thread according to SDL3 docs
-    std::cout << "[VOICE] Unbinding streams to unblock thread..." << std::endl;
-    if (micStream) {
-        SDL_UnbindAudioStream(micStream);
+    // Close audio devices to unblock any SDL operations in the voice thread
+    // This will cause SDL_GetAudioStreamData/SDL_PutAudioStreamData to fail immediately
+    std::cout << "[VOICE] Closing audio devices to unblock thread..." << std::endl;
+    if (micDeviceId_ != 0) {
+        SDL_CloseAudioDevice(micDeviceId_);
+        micDeviceId_ = 0;
     }
-    if (speakerStream) {
-        SDL_UnbindAudioStream(speakerStream);
+    if (speakerDeviceId_ != 0) {
+        SDL_CloseAudioDevice(speakerDeviceId_);
+        speakerDeviceId_ = 0;
     }
     
     if (voiceThread_.joinable()) {
@@ -261,13 +221,45 @@ void VoiceClient::stop() {
         
         if (voiceThread_.joinable()) {
             std::cerr << "[VOICE] ERROR: Voice thread did not stop within 500ms!" << std::endl;
-            std::cerr << "[VOICE] This may cause issues on program exit." << std::endl;
+            std::cerr << "[VOICE] Force stopping..." << std::endl;
+            // If thread is still running, it's stuck - we'll let jthread handle it
         } else {
             std::cout << "[VOICE] Thread stopped successfully" << std::endl;
         }
     }
     
     std::cout << "Voice client stopped" << std::endl;
+}
+
+void VoiceClient::shutdown() {
+    // Stop the voice thread first (if running)
+    stop();
+    
+    // Destroy streams
+    if (micStream) {
+        SDL_DestroyAudioStream(micStream);
+        micStream = nullptr;
+    }
+    if (speakerStream) {
+        SDL_DestroyAudioStream(speakerStream);
+        speakerStream = nullptr;
+    }
+    
+    // Clean up Opus codecs
+    if (encoder) {
+        opus_encoder_destroy(encoder);
+        encoder = nullptr;
+    }
+    if (decoder) {
+        opus_decoder_destroy(decoder);
+        decoder = nullptr;
+    }
+    
+    // Note: We don't quit SDL_INIT_AUDIO here because:
+    // 1. It was initialized in the main thread
+    // 2. Other components might need it
+    // 3. SDL_QuitSubSystem should be called from the main thread
+    // SDL audio will be properly cleaned up when the application exits
 }
 
 void VoiceClient::queueVoicePacket(const std::vector<uint8_t>& packet) {

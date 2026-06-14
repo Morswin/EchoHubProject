@@ -394,9 +394,10 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 }
 
 void SDL_AppQuit(void *appstate, SDL_AppResult result) {
-    // Stop voice client BEFORE SDL_Quit to avoid mutex issues
+    // Shutdown voice client BEFORE SDL_Quit to avoid mutex issues
+    // Use shutdown() instead of stop() to ensure full cleanup
     if (g_AppState.voiceClient) {
-        g_AppState.voiceClient->stop();
+        g_AppState.voiceClient->shutdown();
         g_AppState.voiceClient.reset();
     }
     
