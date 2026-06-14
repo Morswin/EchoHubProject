@@ -224,16 +224,17 @@ void VoiceClient::stop() {
         
         // Wait for thread to stop with timeout
         std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-        while (voiceThread_.joinable() && 
-               std::chrono::steady_clock::now() - start < std::chrono::milliseconds(500)) {
+        while (std::chrono::steady_clock::now() - start < std::chrono::milliseconds(500)) {
+            if (!voiceThread_.joinable()) {
+                std::cout << "[VOICE] Thread stopped successfully" << std::endl;
+                break;
+            }
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
         
         if (voiceThread_.joinable()) {
-            std::cerr << "[VOICE] ERROR: Voice thread did not stop within 500ms!" << std::endl;
-            std::cerr << "[VOICE] Force stopping..." << std::endl;
-        } else {
-            std::cout << "[VOICE] Thread stopped successfully" << std::endl;
+            std::cerr << "[VOICE] ERROR: Voice thread still running after 500ms!" << std::endl;
+            std::cerr << "[VOICE] This is unexpected - thread should have exited after unbinding streams." << std::endl;
         }
     }
     
