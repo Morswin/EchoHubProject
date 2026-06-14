@@ -89,17 +89,13 @@ namespace Network {
 
         connected_ = false;
         
-        // Send disconnect message
-        try {
-            Message disconnectMsg;
-            disconnectMsg.type = MessageType::DISCONNECT;
-            sendMessage(disconnectMsg);
-        } catch (...) {
-            // Ignore errors during disconnect
-        }
-        
-        // Stop the io_context
+        // Stop the io_context FIRST to cancel any pending async operations
         ioContext_.stop();
+        
+        // Don't send disconnect message - it can block if socket is closing
+        // The server will detect disconnection when the socket closes
+        
+        // Close sockets
         
         // Close sockets
         if (tcpSocket_) {
