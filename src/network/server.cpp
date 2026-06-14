@@ -1,6 +1,5 @@
 #include "server.hpp"
 #include <iostream>
-#include "../../external/nlohmann/json.hpp"
 
 namespace Network {
 
@@ -153,22 +152,22 @@ namespace Network {
     void Server::handleMessage(const Message& msg, std::shared_ptr<ClientInfo> client) {
         switch (msg.type) {
             case MessageType::LOGIN_REQUEST: {
-                LoginData loginData = LoginData::fromJson(msg.data);
+                LoginData loginData = LoginData::fromMessageData(msg.data);
                 handleLoginRequest(loginData, client);
                 break;
             }
             case MessageType::TEXT_MESSAGE: {
-                TextMessage textMsg = TextMessage::fromJson(msg.data);
+                TextMessage textMsg = TextMessage::fromMessageData(msg.data);
                 handleTextMessage(textMsg, client);
                 break;
             }
             case MessageType::VOICE_PACKET: {
-                VoicePacket voicePkt = VoicePacket::fromJson(msg.data);
+                VoicePacket voicePkt = VoicePacket::fromMessageData(msg.data);
                 handleVoicePacket(voicePkt, client);
                 break;
             }
             case MessageType::JOIN_CHANNEL: {
-                std::string channelName = msg.data.value("channel", "");
+                std::string channelName = msg.data.get("channel", "");
                 handleJoinChannel(channelName, client);
                 break;
             }
@@ -199,7 +198,7 @@ namespace Network {
         // Broadcast the message to all users in the same channel
         broadcastMessage(Message{
             MessageType::TEXT_MESSAGE,
-            textMsg.toJson()
+            textMsg.toMessageData()
         }, textMsg.channel);
     }
 
@@ -231,13 +230,15 @@ namespace Network {
             response.success = true;
             sendMessageToClient(client, Message{
                 MessageType::LOGIN_RESPONSE,
-                response.toJson()
+                response.toMessageData()
             });
             
             // Notify others that a new user joined
+            MessageData userJoinedData;
+            userJoinedData.set("username", loginData.username);
             broadcastMessage(Message{
                 MessageType::USER_JOINED,
-                json{{{"username", loginData.username}}}
+                userJoinedData
             });
         } else {
             // Login failed
@@ -247,7 +248,7 @@ namespace Network {
             response.errorMessage = "Invalid username or password";
             sendMessageToClient(client, Message{
                 MessageType::LOGIN_RESPONSE,
-                response.toJson()
+                response.toMessageData()
             });
         }
     }
@@ -281,14 +282,18 @@ namespace Network {
             channelList.push_back(info);
         }
         
-        json channelListJson = json::array();
+        // Build message data with channel list
+        MessageData data;
+        std::string channelsStr;
         for (const auto& channel : channelList) {
-            channelListJson.push_back(channel.toJson());
+            if (!channelsStr.empty()) channelsStr += ";";
+            channelsStr += channel.name + "," + channel.icon + "," + (channel.isTextChannel ? "true" : "false");
         }
+        data.set("channels", channelsStr);
         
         sendMessageToClient(client, Message{
             MessageType::CHANNEL_LIST_RESPONSE,
-            {{{"channels", channelListJson}}}
+            data
         });
     }
 
@@ -327,7 +332,7 @@ namespace Network {
             // For now, we'll just broadcast it via TCP (for simplicity)
             Message msg;
             msg.type = MessageType::VOICE_PACKET;
-            msg.data = pkt.toJson();
+            msg.data = pkt.toMessageData();
             
             try {
                 std::string msgStr = msg.serialize() + "\n";

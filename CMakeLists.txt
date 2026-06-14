@@ -61,7 +61,6 @@ target_include_directories(echo_hub PRIVATE
         src/voice
         src/network
         src/utils
-        external
 )
 
 # Linking

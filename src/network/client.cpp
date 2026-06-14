@@ -1,6 +1,5 @@
 #include "client.hpp"
 #include <iostream>
-#include "../../external/nlohmann/json.hpp"
 
 namespace Network {
 
@@ -40,7 +39,7 @@ namespace Network {
             
             Message loginMsg;
             loginMsg.type = MessageType::LOGIN_REQUEST;
-            loginMsg.data = loginData.toJson();
+            loginMsg.data = loginData.toMessageData();
             
             sendMessage(loginMsg);
             
@@ -148,17 +147,17 @@ namespace Network {
     void Client::handleMessage(const Message& msg) {
         switch (msg.type) {
             case MessageType::LOGIN_RESPONSE: {
-                LoginData loginData = LoginData::fromJson(msg.data);
+                LoginData loginData = LoginData::fromMessageData(msg.data);
                 handleLoginResponse(loginData);
                 break;
             }
             case MessageType::TEXT_MESSAGE: {
-                TextMessage textMsg = TextMessage::fromJson(msg.data);
+                TextMessage textMsg = TextMessage::fromMessageData(msg.data);
                 handleTextMessage(textMsg);
                 break;
             }
             case MessageType::VOICE_PACKET: {
-                VoicePacket voicePkt = VoicePacket::fromJson(msg.data);
+                VoicePacket voicePkt = VoicePacket::fromMessageData(msg.data);
                 handleVoicePacket(voicePkt);
                 break;
             }
@@ -175,7 +174,7 @@ namespace Network {
                 break;
             }
             case MessageType::ERROR: {
-                std::cerr << "Server error: " << msg.data.value("error", "Unknown error") << std::endl;
+                std::cerr << "Server error: " << msg.data.get("error", "Unknown error") << std::endl;
                 break;
             }
             default: {
@@ -212,30 +211,57 @@ namespace Network {
         }
     }
 
-    void Client::handleChannelListResponse(const json& data) {
+    void Client::handleChannelListResponse(const MessageData& data) {
         if (channelListCallback_) {
             std::vector<ChannelInfo> channels;
-            if (data.contains("channels") && data["channels"].is_array()) {
-                for (const auto& channelJson : data["channels"]) {
-                    channels.push_back(ChannelInfo::fromJson(channelJson));
+            std::string channelsStr = data.get("channels", "");
+            // Parse channels from semicolon-separated string
+            size_t start = 0;
+            size_t end = channelsStr.find(';');
+            while (end != std::string::npos) {
+                std::string channelStr = channelsStr.substr(start, end - start);
+                size_t comma1 = channelStr.find(',');
+                size_t comma2 = channelStr.find(',', comma1 + 1);
+                if (comma1 != std::string::npos && comma2 != std::string::npos) {
+                    ChannelInfo channel;
+                    channel.name = channelStr.substr(0, comma1);
+                    channel.icon = channelStr.substr(comma1 + 1, comma2 - comma1 - 1);
+                    channel.isTextChannel = (channelStr.substr(comma2 + 1) == "true");
+                    channels.push_back(channel);
+                }
+                start = end + 1;
+                end = channelsStr.find(';', start);
+            }
+            // Last channel
+            if (start < channelsStr.size()) {
+                std::string channelStr = channelsStr.substr(start);
+                size_t comma1 = channelStr.find(',');
+                size_t comma2 = channelStr.find(',', comma1 + 1);
+                if (comma1 != std::string::npos && comma2 != std::string::npos) {
+                    ChannelInfo channel;
+                    channel.name = channelStr.substr(0, comma1);
+                    channel.icon = channelStr.substr(comma1 + 1, comma2 - comma1 - 1);
+                    channel.isTextChannel = (channelStr.substr(comma2 + 1) == "true");
+                    channels.push_back(channel);
                 }
             }
             channelListCallback_(channels);
         }
     }
 
-    void Client::handleUserJoined(const json& data) {
+    void Client::handleUserJoined(const MessageData& data) {
         if (userListCallback_) {
             std::vector<std::string> users;
-            if (data.contains("username")) {
-                users.push_back(data["username"]);
+            std::string username = data.get("username", "");
+            if (!username.empty()) {
+                users.push_back(username);
             }
             // In a real implementation, you'd maintain a full user list
             userListCallback_(users);
         }
     }
 
-    void Client::handleUserLeft(const json& data) {
+    void Client::handleUserLeft(const MessageData& data) {
         if (userListCallback_) {
             std::vector<std::string> users;
             // In a real implementation, you'd remove the user from the list
@@ -254,7 +280,7 @@ namespace Network {
 
         Message msg;
         msg.type = MessageType::TEXT_MESSAGE;
-        msg.data = textMsg.toJson();
+        msg.data = textMsg.toMessageData();
 
         sendMessage(msg);
     }
@@ -269,7 +295,7 @@ namespace Network {
 
         Message msg;
         msg.type = MessageType::VOICE_PACKET;
-        msg.data = voicePkt.toJson();
+        msg.data = voicePkt.toMessageData();
 
         sendMessage(msg);
     }
@@ -281,7 +307,9 @@ namespace Network {
 
         Message msg;
         msg.type = MessageType::JOIN_CHANNEL;
-        msg.data = {{{"channel", channelName}}};
+        MessageData data;
+        data.set("channel", channelName);
+        msg.data = data;;
 
         sendMessage(msg);
     }
@@ -291,7 +319,9 @@ namespace Network {
 
         Message msg;
         msg.type = MessageType::LEAVE_CHANNEL;
-        msg.data = {{{"channel", currentChannel_}}};
+        MessageData data;
+        data.set("channel", currentChannel_);
+        msg.data = data;
 
         sendMessage(msg);
         currentChannel_ = "";
@@ -302,7 +332,7 @@ namespace Network {
 
         Message msg;
         msg.type = MessageType::CHANNEL_LIST_REQUEST;
-        msg.data = {};
+        msg.data = MessageData();
 
         sendMessage(msg);
     }

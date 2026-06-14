@@ -4,10 +4,8 @@
 #include <string>
 #include <vector>
 #include <cstdint>
-#include "../../external/nlohmann/json.hpp"
-
-// Using nlohmann/json for easy JSON serialization
-using json = nlohmann::json;
+#include <map>
+#include <sstream>
 
 namespace Network {
     // --- Message Types ---
@@ -43,302 +41,300 @@ namespace Network {
         ERROR
     };
 
-    // Convert MessageType to string for JSON serialization
+    // Convert MessageType to string
     inline std::string messageTypeToString(MessageType type) {
         switch (type) {
-            case MessageType::CONNECT_REQUEST: return "connect_request";
-            case MessageType::CONNECT_RESPONSE: return "connect_response";
-            case MessageType::DISCONNECT: return "disconnect";
-            case MessageType::LOGIN_REQUEST: return "login_request";
-            case MessageType::LOGIN_RESPONSE: return "login_response";
-            case MessageType::USER_JOINED: return "user_joined";
-            case MessageType::USER_LEFT: return "user_left";
-            case MessageType::TEXT_MESSAGE: return "text_message";
-            case MessageType::VOICE_PACKET: return "voice_packet";
-            case MessageType::JOIN_CHANNEL: return "join_channel";
-            case MessageType::LEAVE_CHANNEL: return "leave_channel";
-            case MessageType::CHANNEL_LIST_REQUEST: return "channel_list_request";
-            case MessageType::CHANNEL_LIST_RESPONSE: return "channel_list_response";
-            case MessageType::SERVER_INFO_REQUEST: return "server_info_request";
-            case MessageType::SERVER_INFO_RESPONSE: return "server_info_response";
-            case MessageType::ERROR: return "error";
-            default: return "unknown";
+            case MessageType::CONNECT_REQUEST: return "CONNECT_REQUEST";
+            case MessageType::CONNECT_RESPONSE: return "CONNECT_RESPONSE";
+            case MessageType::DISCONNECT: return "DISCONNECT";
+            case MessageType::LOGIN_REQUEST: return "LOGIN_REQUEST";
+            case MessageType::LOGIN_RESPONSE: return "LOGIN_RESPONSE";
+            case MessageType::USER_JOINED: return "USER_JOINED";
+            case MessageType::USER_LEFT: return "USER_LEFT";
+            case MessageType::TEXT_MESSAGE: return "TEXT_MESSAGE";
+            case MessageType::VOICE_PACKET: return "VOICE_PACKET";
+            case MessageType::JOIN_CHANNEL: return "JOIN_CHANNEL";
+            case MessageType::LEAVE_CHANNEL: return "LEAVE_CHANNEL";
+            case MessageType::CHANNEL_LIST_REQUEST: return "CHANNEL_LIST_REQUEST";
+            case MessageType::CHANNEL_LIST_RESPONSE: return "CHANNEL_LIST_RESPONSE";
+            case MessageType::SERVER_INFO_REQUEST: return "SERVER_INFO_REQUEST";
+            case MessageType::SERVER_INFO_RESPONSE: return "SERVER_INFO_RESPONSE";
+            case MessageType::ERROR: return "ERROR";
+            default: return "UNKNOWN";
         }
     }
 
     // Convert string to MessageType
     inline MessageType stringToMessageType(const std::string& str) {
-        if (str == "connect_request") return MessageType::CONNECT_REQUEST;
-        if (str == "connect_response") return MessageType::CONNECT_RESPONSE;
-        if (str == "disconnect") return MessageType::DISCONNECT;
-        if (str == "login_request") return MessageType::LOGIN_REQUEST;
-        if (str == "login_response") return MessageType::LOGIN_RESPONSE;
-        if (str == "user_joined") return MessageType::USER_JOINED;
-        if (str == "user_left") return MessageType::USER_LEFT;
-        if (str == "text_message") return MessageType::TEXT_MESSAGE;
-        if (str == "voice_packet") return MessageType::VOICE_PACKET;
-        if (str == "join_channel") return MessageType::JOIN_CHANNEL;
-        if (str == "leave_channel") return MessageType::LEAVE_CHANNEL;
-        if (str == "channel_list_request") return MessageType::CHANNEL_LIST_REQUEST;
-        if (str == "channel_list_response") return MessageType::CHANNEL_LIST_RESPONSE;
-        if (str == "server_info_request") return MessageType::SERVER_INFO_REQUEST;
-        if (str == "server_info_response") return MessageType::SERVER_INFO_RESPONSE;
-        if (str == "error") return MessageType::ERROR;
+        if (str == "CONNECT_REQUEST") return MessageType::CONNECT_REQUEST;
+        if (str == "CONNECT_RESPONSE") return MessageType::CONNECT_RESPONSE;
+        if (str == "DISCONNECT") return MessageType::DISCONNECT;
+        if (str == "LOGIN_REQUEST") return MessageType::LOGIN_REQUEST;
+        if (str == "LOGIN_RESPONSE") return MessageType::LOGIN_RESPONSE;
+        if (str == "USER_JOINED") return MessageType::USER_JOINED;
+        if (str == "USER_LEFT") return MessageType::USER_LEFT;
+        if (str == "TEXT_MESSAGE") return MessageType::TEXT_MESSAGE;
+        if (str == "VOICE_PACKET") return MessageType::VOICE_PACKET;
+        if (str == "JOIN_CHANNEL") return MessageType::JOIN_CHANNEL;
+        if (str == "LEAVE_CHANNEL") return MessageType::LEAVE_CHANNEL;
+        if (str == "CHANNEL_LIST_REQUEST") return MessageType::CHANNEL_LIST_REQUEST;
+        if (str == "CHANNEL_LIST_RESPONSE") return MessageType::CHANNEL_LIST_RESPONSE;
+        if (str == "SERVER_INFO_REQUEST") return MessageType::SERVER_INFO_REQUEST;
+        if (str == "SERVER_INFO_RESPONSE") return MessageType::SERVER_INFO_RESPONSE;
+        if (str == "ERROR") return MessageType::ERROR;
         return MessageType::ERROR;
     }
 
-    // --- Message Structures ---
-    
-    /**
-     * @brief Base structure for all network messages.
-     * 
-     * All messages have a type and can contain additional data.
-     */
-    struct Message {
-        MessageType type;
-        json data;
+    // --- Simple Key-Value Parser ---
+    // Format: "KEY1:value1|KEY2:value2|KEY3:value3"
+    class MessageData {
+    private:
+        std::map<std::string, std::string> data_;
+
+    public:
+        MessageData() = default;
         
-        // Serialize to JSON string
-        std::string serialize() const {
-            json j;
-            j["type"] = messageTypeToString(type);
-            j["data"] = data;
-            return j.dump();
+        // Parse from string
+        void parse(const std::string& str) {
+            data_.clear();
+            size_t start = 0;
+            size_t end = str.find('|');
+            
+            while (end != std::string::npos) {
+                std::string pair = str.substr(start, end - start);
+                size_t colon = pair.find(':');
+                if (colon != std::string::npos) {
+                    std::string key = pair.substr(0, colon);
+                    std::string value = pair.substr(colon + 1);
+                    data_[key] = value;
+                }
+                start = end + 1;
+                end = str.find('|', start);
+            }
+            
+            // Last pair
+            if (start < str.size()) {
+                std::string pair = str.substr(start);
+                size_t colon = pair.find(':');
+                if (colon != std::string::npos) {
+                    std::string key = pair.substr(0, colon);
+                    std::string value = pair.substr(colon + 1);
+                    data_[key] = value;
+                }
+            }
         }
         
-        // Deserialize from JSON string
-        static Message deserialize(const std::string& str) {
-            try {
-                json j = json::parse(str);
-                Message msg;
-                msg.type = stringToMessageType(j["type"]);
-                msg.data = j["data"];
-                return msg;
-            } catch (...) {
-                // Return error message on parse failure
-                Message msg;
-                msg.type = MessageType::ERROR;
-                msg.data["error"] = "Invalid message format";
-                return msg;
+        // Serialize to string
+        std::string serialize() const {
+            std::ostringstream oss;
+            bool first = true;
+            for (const auto& pair : data_) {
+                if (!first) oss << "|";
+                oss << pair.first << ":" << pair.second;
+                first = false;
             }
+            return oss.str();
+        }
+        
+        // Accessors
+        std::string get(const std::string& key, const std::string& defaultValue = "") const {
+            auto it = data_.find(key);
+            if (it != data_.end()) return it->second;
+            return defaultValue;
+        }
+        
+        void set(const std::string& key, const std::string& value) {
+            data_[key] = value;
+        }
+        
+        bool contains(const std::string& key) const {
+            return data_.find(key) != data_.end();
+        }
+        
+        const std::map<std::string, std::string>& getAll() const {
+            return data_;
+        }
+    };
+
+    // --- Message Structure ---
+    struct Message {
+        MessageType type;
+        MessageData data;
+        
+        // Serialize to string: "TYPE:type_string|..."
+        std::string serialize() const {
+            std::ostringstream oss;
+            oss << "TYPE:" << messageTypeToString(type);
+            std::string dataStr = data.serialize();
+            if (!dataStr.empty()) {
+                oss << "|" << dataStr;
+            }
+            return oss.str();
+        }
+        
+        // Deserialize from string
+        static Message deserialize(const std::string& str) {
+            Message msg;
+            size_t typeEnd = str.find('|');
+            std::string typeStr;
+            std::string dataStr;
+            
+            if (typeEnd != std::string::npos) {
+                typeStr = str.substr(5, typeEnd - 5); // Skip "TYPE:"
+                dataStr = str.substr(typeEnd + 1);
+            } else {
+                // Only type, no data
+                if (str.find("TYPE:") == 0) {
+                    typeStr = str.substr(5);
+                } else {
+                    typeStr = str;
+                }
+            }
+            
+            msg.type = stringToMessageType(typeStr);
+            if (!dataStr.empty()) {
+                msg.data.parse(dataStr);
+            }
+            return msg;
         }
     };
 
     // --- Specific Message Types ---
     
-    /**
-     * @brief Text message for chat.
-     */
     struct TextMessage {
         std::string channel;
         std::string author;
         std::string content;
         std::string timestamp;
         
-        // Convert to JSON
-        json toJson() const {
-            json j;
-            j["channel"] = channel;
-            j["author"] = author;
-            j["content"] = content;
-            j["timestamp"] = timestamp;
-            return j;
+        // Convert to MessageData
+        MessageData toMessageData() const {
+            MessageData data;
+            data.set("channel", channel);
+            data.set("author", author);
+            data.set("content", content);
+            data.set("timestamp", timestamp);
+            return data;
         }
         
-        // Create from JSON
-        static TextMessage fromJson(const json& j) {
+        // Create from MessageData
+        static TextMessage fromMessageData(const MessageData& data) {
             TextMessage msg;
-            msg.channel = j.value("channel", "");
-            msg.author = j.value("author", "");
-            msg.content = j.value("content", "");
-            msg.timestamp = j.value("timestamp", "");
+            msg.channel = data.get("channel", "");
+            msg.author = data.get("author", "");
+            msg.content = data.get("content", "");
+            msg.timestamp = data.get("timestamp", "");
             return msg;
         }
     };
 
-    /**
-     * @brief Voice packet for VoIP.
-     */
     struct VoicePacket {
         std::string channel;
         std::string sender;
         std::vector<uint8_t> audioData; // Encoded Opus data
         
-        // Convert to JSON (audio data as base64)
-        json toJson() const {
-            json j;
-            j["channel"] = channel;
-            j["sender"] = sender;
-            // Encode binary data as base64 for JSON
-            std::string base64Data = base64Encode(audioData);
-            j["audio_data"] = base64Data;
-            return j;
+        // Convert to MessageData (audio data as hex string for simplicity)
+        MessageData toMessageData() const {
+            MessageData data;
+            data.set("channel", channel);
+            data.set("sender", sender);
+            // Convert binary data to hex string
+            std::string hexData;
+            for (uint8_t byte : audioData) {
+                char buf[3];
+                snprintf(buf, sizeof(buf), "%02x", byte);
+                hexData += buf;
+            }
+            data.set("audio_data", hexData);
+            return data;
         }
         
-        // Create from JSON
-        static VoicePacket fromJson(const json& j) {
+        // Create from MessageData
+        static VoicePacket fromMessageData(const MessageData& data) {
             VoicePacket pkt;
-            pkt.channel = j.value("channel", "");
-            pkt.sender = j.value("sender", "");
-            std::string base64Data = j.value("audio_data", "");
-            pkt.audioData = base64Decode(base64Data);
+            pkt.channel = data.get("channel", "");
+            pkt.sender = data.get("sender", "");
+            std::string hexData = data.get("audio_data", "");
+            // Convert hex string back to binary
+            for (size_t i = 0; i < hexData.size(); i += 2) {
+                std::string byteString = hexData.substr(i, 2);
+                uint8_t byte = static_cast<uint8_t>(std::stoi(byteString, nullptr, 16));
+                pkt.audioData.push_back(byte);
+            }
             return pkt;
         }
-        
-    private:
-        // Simple base64 encoding/decoding (for JSON compatibility)
-        static std::string base64Encode(const std::vector<uint8_t>& data);
-        static std::vector<uint8_t> base64Decode(const std::string& data);
     };
 
-    /**
-     * @brief Login request/response.
-     */
     struct LoginData {
         std::string username;
         std::string password;
         bool success = false;
         std::string errorMessage;
         
-        json toJson() const {
-            json j;
-            j["username"] = username;
-            j["password"] = password;
-            j["success"] = success;
-            j["error"] = errorMessage;
-            return j;
+        // Convert to MessageData
+        MessageData toMessageData() const {
+            MessageData data;
+            data.set("username", username);
+            data.set("password", password);
+            data.set("success", success ? "true" : "false");
+            data.set("error", errorMessage);
+            return data;
         }
         
-        static LoginData fromJson(const json& j) {
+        // Create from MessageData
+        static LoginData fromMessageData(const MessageData& data) {
             LoginData login;
-            login.username = j.value("username", "");
-            login.password = j.value("password", "");
-            login.success = j.value("success", false);
-            login.errorMessage = j.value("error", "");
+            login.username = data.get("username", "");
+            login.password = data.get("password", "");
+            login.success = (data.get("success", "") == "true");
+            login.errorMessage = data.get("error", "");
             return login;
         }
     };
 
-    /**
-     * @brief Channel information.
-     */
     struct ChannelInfo {
         std::string name;
         std::string icon;
         bool isTextChannel;
-        std::vector<std::string> users; // Users currently in this channel
+        std::vector<std::string> users;
         
-        json toJson() const {
-            json j;
-            j["name"] = name;
-            j["icon"] = icon;
-            j["is_text_channel"] = isTextChannel;
-            j["users"] = users;
-            return j;
+        // Convert to MessageData (users as comma-separated string)
+        MessageData toMessageData() const {
+            MessageData data;
+            data.set("name", name);
+            data.set("icon", icon);
+            data.set("is_text_channel", isTextChannel ? "true" : "false");
+            // Convert users to comma-separated string
+            std::string usersStr;
+            for (size_t i = 0; i < users.size(); ++i) {
+                if (i > 0) usersStr += ",";
+                usersStr += users[i];
+            }
+            data.set("users", usersStr);
+            return data;
         }
         
-        static ChannelInfo fromJson(const json& j) {
+        // Create from MessageData
+        static ChannelInfo fromMessageData(const MessageData& data) {
             ChannelInfo channel;
-            channel.name = j.value("name", "");
-            channel.icon = j.value("icon", "");
-            channel.isTextChannel = j.value("is_text_channel", true);
-            channel.users = j.value("users", std::vector<std::string>{});
+            channel.name = data.get("name", "");
+            channel.icon = data.get("icon", "");
+            channel.isTextChannel = (data.get("is_text_channel", "") == "true");
+            // Parse users from comma-separated string
+            std::string usersStr = data.get("users", "");
+            size_t start = 0;
+            size_t end = usersStr.find(',');
+            while (end != std::string::npos) {
+                channel.users.push_back(usersStr.substr(start, end - start));
+                start = end + 1;
+                end = usersStr.find(',', start);
+            }
+            if (start < usersStr.size()) {
+                channel.users.push_back(usersStr.substr(start));
+            }
             return channel;
         }
     };
-
-    // --- Helper functions for base64 encoding ---
-    inline std::string VoicePacket::base64Encode(const std::vector<uint8_t>& data) {
-        static const std::string base64_chars = 
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            "abcdefghijklmnopqrstuvwxyz"
-            "0123456789+/";
-        
-        std::string ret;
-        int i = 0;
-        int j = 0;
-        unsigned char char_array_3[3];
-        unsigned char char_array_4[4];
-        
-        for (auto byte : data) {
-            char_array_3[i++] = byte;
-            if (i == 3) {
-                char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
-                char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
-                char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
-                char_array_4[3] = char_array_3[2] & 0x3f;
-                
-                for (i = 0; i < 4; i++)
-                    ret += base64_chars[char_array_4[i]];
-                i = 0;
-            }
-        }
-        
-        if (i) {
-            for (j = i; j < 3; j++)
-                char_array_3[j] = '\0';
-            
-            char_array_4[0] = (char_array_3[0] & 0xfc) >> 2;
-            char_array_4[1] = ((char_array_3[0] & 0x03) << 4) + ((char_array_3[1] & 0xf0) >> 4);
-            char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
-            char_array_4[3] = char_array_3[2] & 0x3f;
-            
-            for (j = 0; j < i + 1; j++)
-                ret += base64_chars[char_array_4[j]];
-            
-            while (i++ < 3)
-                ret += '=';
-        }
-        
-        return ret;
-    }
-    
-    inline std::vector<uint8_t> VoicePacket::base64Decode(const std::string& data) {
-        static const std::string base64_chars = 
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-            "abcdefghijklmnopqrstuvwxyz"
-            "0123456789+/";
-        
-        std::vector<uint8_t> ret;
-        int i = 0;
-        int j = 0;
-        int in_len = data.size();
-        unsigned char char_array_4[4], char_array_3[3];
-        
-        while (in_len-- && (data[j] != '=')) {
-            char_array_4[i++] = data[j];
-            j++;
-            if (i == 4) {
-                for (i = 0; i < 4; i++)
-                    char_array_4[i] = base64_chars.find(char_array_4[i]);
-                
-                char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
-                char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
-                char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
-                
-                for (i = 0; i < 3; i++)
-                    ret.push_back(char_array_3[i]);
-                i = 0;
-            }
-        }
-        
-        if (i) {
-            for (int k = i; k < 4; k++)
-                char_array_4[k] = 0;
-            
-            for (int k = 0; k < 4; k++)
-                char_array_4[k] = base64_chars.find(char_array_4[k]);
-            
-            char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
-            char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
-            char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
-            
-            for (int k = 0; k < i - 1; k++)
-                ret.push_back(char_array_3[k]);
-        }
-        
-        return ret;
-    }
 }
 
 #endif // ECHOHUB_NETWORK_PROTOCOL_HPP

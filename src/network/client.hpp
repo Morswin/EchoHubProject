@@ -189,9 +189,9 @@ namespace Network {
         void handleTextMessage(const TextMessage& textMsg);
         void handleVoicePacket(const VoicePacket& voicePkt);
         void handleLoginResponse(const LoginData& loginData);
-        void handleChannelListResponse(const json& data);
-        void handleUserJoined(const json& data);
-        void handleUserLeft(const json& data);
+        void handleChannelListResponse(const MessageData& data);
+        void handleUserJoined(const MessageData& data);
+        void handleUserLeft(const MessageData& data);
 
         // --- Helper Methods ---
         void sendMessage(const Message& msg);
