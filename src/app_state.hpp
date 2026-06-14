@@ -63,6 +63,7 @@ public:
     
     // --- Channel Users ---
     std::vector<std::string> usersInChannel;
+    std::string currentUserListChannel;
     std::unordered_map<std::string, std::vector<std::string>> usersInVoiceChannels;
 
     // --- Theme ---
@@ -151,6 +152,15 @@ public:
     [[nodiscard]] const std::unordered_map<std::string, std::vector<std::string>>& getUsersInVoiceChannels() const { return usersInVoiceChannels; }
     void setUsersInVoiceChannel(const std::string& channel, const std::vector<std::string>& users) {
         usersInVoiceChannels[channel] = users;
+    }
+    
+    [[nodiscard]] bool hasOtherUsersInVoiceChannel() const {
+        auto it = usersInVoiceChannels.find(currentVoiceChannel);
+        if (it == usersInVoiceChannels.end()) {
+            return false; // No info about this channel
+        }
+        // Check if there are users other than ourselves
+        return it->second.size() > 1 || (it->second.size() == 1 && it->second[0] != username);
     }
     
     [[nodiscard]] bool getIsConnecting() const { return isConnecting; }

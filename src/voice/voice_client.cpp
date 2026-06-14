@@ -202,7 +202,7 @@ void VoiceClient::decodeAndPlay(const std::vector<uint8_t>& inEncodedPacket) {
 // We'll use a simpler approach: poll the mic stream in the voice thread
 // and put data to speaker stream directly
 
-bool VoiceClient::start(VoicePacketCallback onVoicePacket) {
+bool VoiceClient::start(VoicePacketCallback onVoicePacket, std::function<bool()> shouldSendPacket) {
     if (running_) {
         std::cerr << "Voice client is already running!" << std::endl;
         return false;
@@ -214,6 +214,7 @@ bool VoiceClient::start(VoicePacketCallback onVoicePacket) {
     }
 
     onVoicePacketCallback_ = onVoicePacket;
+    shouldSendPacketCallback_ = shouldSendPacket;
     shouldStop_ = false;
     running_ = true;
     
@@ -260,11 +261,18 @@ void VoiceClient::voiceThreadFunction() {
         std::vector<uint8_t> encodedPacket;
         if (recordAndEncode(encodedPacket)) {
             std::cout << "[VOICE THREAD] Recorded and encoded packet (size: " << encodedPacket.size() << ")" << std::endl;
-            // Send the packet via callback
-            if (onVoicePacketCallback_) {
-                std::cout << "[VOICE THREAD] Calling onVoicePacketCallback" << std::endl;
-                onVoicePacketCallback_(encodedPacket);
-                std::cout << "[VOICE THREAD] onVoicePacketCallback returned" << std::endl;
+            
+            // Only send if we should (e.g., there are other users in the channel)
+            if (shouldSendPacketCallback_()) {
+                std::cout << "[VOICE THREAD] Should send packet: yes" << std::endl;
+                // Send the packet via callback
+                if (onVoicePacketCallback_) {
+                    std::cout << "[VOICE THREAD] Calling onVoicePacketCallback" << std::endl;
+                    onVoicePacketCallback_(encodedPacket);
+                    std::cout << "[VOICE THREAD] onVoicePacketCallback returned" << std::endl;
+                }
+            } else {
+                std::cout << "[VOICE THREAD] Should send packet: no (alone in channel?)" << std::endl;
             }
         }
         

@@ -48,9 +48,11 @@ public:
     /**
      * @brief Start voice capture and playback in a separate thread.
      * @param onVoicePacket Callback to send encoded voice packets.
+     * @param shouldSendPacket Function to check if packets should be sent (e.g., if there are other users in channel).
      * @return true if voice client started successfully.
      */
-    bool start(VoicePacketCallback onVoicePacket = nullptr);
+    bool start(VoicePacketCallback onVoicePacket = nullptr, 
+               std::function<bool()> shouldSendPacket = []() { return true; });
 
     /**
      * @brief Stop voice capture and playback.
@@ -104,6 +106,7 @@ private:
 
     // --- Callbacks ---
     VoicePacketCallback onVoicePacketCallback_;
+    std::function<bool()> shouldSendPacketCallback_ = []() { return true; };
 
     // --- Audio Queues ---
     ThreadSafeQueue<std::vector<uint8_t>> incomingVoicePackets_;

@@ -98,6 +98,18 @@ void AppState::onUserListReceived(const std::vector<std::string>& users) {
     // Update users in current channel
     setUsersInChannel(users);
     
+    // If this is a voice channel, also update voice channel users
+    if (!currentUserListChannel.empty()) {
+        // Check if this is a voice channel
+        for (const auto& channel : channels) {
+            if (channel.name == currentUserListChannel && !channel.isTextChannel) {
+                setUsersInVoiceChannel(currentUserListChannel, users);
+                std::cout << "[VOICE] Updated users in voice channel '" << currentUserListChannel << "': " << users.size() << " users" << std::endl;
+                break;
+            }
+        }
+    }
+    
     // Also update friends list
     friends.clear();
     for (const auto& user : users) {
@@ -126,6 +138,9 @@ void AppState::switchChannel(const std::string& channel, bool isTextChannel) {
     
     // Join the channel on the server
     client->joinChannel(channel);
+    
+    // Remember which channel we're requesting users for
+    currentUserListChannel = channel;
     
     // Request user list for the new channel
     client->requestUserList();
@@ -210,12 +225,16 @@ void AppState::startVoice(const std::string& channel) {
     client->setVoiceChannel(channel);
     
     // Start voice client with callback to send packets via network
+    // Only send packets if there are other users in the channel
     std::cout << "[VOICE] Starting voice thread..." << std::endl;
-    isVoiceActive = voiceClient->start([this](const std::vector<uint8_t>& packet) {
-        if (client && client->isConnected()) {
-            client->sendVoicePacketUdp(packet);
-        }
-    });
+    isVoiceActive = voiceClient->start(
+        [this](const std::vector<uint8_t>& packet) {
+            if (client && client->isConnected()) {
+                client->sendVoicePacketUdp(packet);
+            }
+        },
+        [this]() { return hasOtherUsersInVoiceChannel(); }
+    );
     
     if (isVoiceActive) {
         std::cout << "[VOICE] SUCCESS: Voice active in channel: " << channel << std::endl;
