@@ -5,12 +5,14 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <functional>
 #include "ui/theme.hpp"
 #include "ui/molecules.hpp"
 #include "ui/views.hpp"
 #include "network/server.hpp"
 #include "network/client.hpp"
 #include "voice/voice_client.hpp"
+#include "utils/thread_safe_queue.hpp"
 
 class AppState {
 public:
@@ -77,12 +79,16 @@ public:
     std::string currentChannel = "ogólny"; // Current text channel
     std::string currentVoiceChannel = "";
     
+    // --- Main Thread Callback Queue ---
+    ThreadSafeQueue<std::function<void()>> mainThreadCallbacks;
+    
     // --- Connection Timeout ---
     std::chrono::steady_clock::time_point connectionStartTime;
     static constexpr std::chrono::seconds CONNECTION_TIMEOUT = std::chrono::seconds(5);
 
     // --- Network Callbacks ---
     void setupNetworkCallbacks();
+    void processMainThreadCallbacks();
     void onTextMessageReceived(const Network::TextMessage& msg);
     void onVoicePacketReceived(const Network::VoicePacket& pkt);
     void onConnectionStatusChanged(bool connected, const std::string& message);

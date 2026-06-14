@@ -117,7 +117,7 @@ namespace Views {
 
         // 1. ServerSidebar (ikony)
         ImGui::BeginChild("ServerSidebar", {72, -1}, true);
-        Molecules::ServerIcon("DM", theme, true, onDirectMessage);
+        Molecules::ServerIcon("DM", theme, true, [&]() { if (onDirectMessage) onDirectMessage(); });
         Molecules::ServerIcon("+", theme, false, onCreateServer);
         ImGui::EndChild();
         ImGui::SameLine();
@@ -336,11 +336,8 @@ namespace Views {
         const Theme& theme,
         const std::function<void()>& onSave = {}
     ) {
-        ImGui::SetWindowSize({800, 600});
-        ImGui::SetWindowPos(
-            ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
-            ImGuiCond_Once
-        );
+        ImGui::SetNextWindowSize({800, 600});
+        ImGui::SetNextWindowPos(CenteredPosition({800, 600}), ImGuiCond_Always);
 
         ImGui::Begin("Ustawienia użytkownika", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         // Sidebar
@@ -390,11 +387,8 @@ namespace Views {
         const Theme& theme,
         const std::function<void()>& onSave = {}
     ) {
-        ImGui::SetWindowSize({800, 600});
-        ImGui::SetWindowPos(
-            ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
-            ImGuiCond_Once
-        );
+        ImGui::SetNextWindowSize({800, 600});
+        ImGui::SetNextWindowPos(CenteredPosition({800, 600}), ImGuiCond_Always);
 
         ImGui::Begin("Ustawienia serwera", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         // Sidebar
@@ -470,11 +464,8 @@ namespace Views {
         const std::function<void()>& onReconnect = {},
         const std::function<void()>& onBackToMain = {}
     ) {
-        ImGui::SetWindowSize({400, 200});
-        ImGui::SetWindowPos(
-            ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
-            ImGuiCond_Once
-        );
+        ImGui::SetNextWindowSize({400, 200});
+        ImGui::SetNextWindowPos(CenteredPosition({400, 200}), ImGuiCond_Always);
 
         ImGui::Begin("Połączenie przerwane", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         Atoms::Text("Połączenie przerwane", theme, 3); // 3 = error color

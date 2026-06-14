@@ -10,6 +10,9 @@
 #include <vector>
 #include <format>
 #include <iostream>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
 
 #include "app_state.hpp"
 #include "message.hpp"
@@ -18,6 +21,17 @@
 #include "network/client.hpp"
 #include "ui/views.hpp"
 #include "view_states.hpp"
+
+// Helper function to get current timestamp
+std::string getCurrentTimestamp() {
+    auto now = std::chrono::system_clock::now();
+    auto time = std::chrono::system_clock::to_time_t(now);
+    std::tm tm = *std::localtime(&time);
+    
+    std::ostringstream oss;
+    oss << std::put_time(&tm, "%H:%M:%S");
+    return oss.str();
+}
 
 
 // Global app state
@@ -50,6 +64,9 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     ImGui_ImplSDLRenderer3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
+
+    // Process callbacks from background threads (network, voice, etc.)
+    g_AppState.processMainThreadCallbacks();
 
     // --- 5. System przełączania widoków ---
     switch (g_AppState.getView()) {
@@ -93,9 +110,13 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             Views::FriendsListView(g_AppState.getFriends(), g_AppState.getTheme(),
                 [&]() { g_AppState.setView(EViewState::CREATE_NEW_SERVER_VIEW); },
                 [&](const std::string& serverId) {
-                    g_AppState.setView(EViewState::SERVER_VIEW);
+                    // Connect to server callback (for saved servers)
+                    g_AppState.setView(EViewState::CONNECT_TO_NEW_SERVER_VIEW);
                 },
-                [&]() { g_AppState.setView(EViewState::CONNECT_TO_NEW_SERVER_VIEW); }
+                [&]() {
+                    // DM button - stay in FriendsListView (do nothing or just stay)
+                    // This is the direct message button, should not connect to server
+                }
             );
             break;
 
@@ -204,9 +225,21 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                     // Send message through network client if connected
                     if (g_AppState.client && g_AppState.client->isConnected()) {
                         g_AppState.client->sendTextMessage(g_AppState.getCurrentChannel(), msg);
+                        // Local echo - add message immediately to UI
+                        g_AppState.getMessages().push_back({
+                            g_AppState.getCurrentChannel(),
+                            g_AppState.getUsername(),
+                            msg,
+                            getCurrentTimestamp()
+                        });
                     } else {
                         // Local echo for testing
-                        g_AppState.getMessages().push_back({g_AppState.getUsername(), msg, "Teraz"});
+                        g_AppState.getMessages().push_back({
+                            g_AppState.getCurrentChannel(),
+                            g_AppState.getUsername(),
+                            msg,
+                            getCurrentTimestamp()
+                        });
                     }
                     g_AppState.getChatInput().clear();
                 },

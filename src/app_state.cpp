@@ -1,44 +1,38 @@
 #include "app_state.hpp"
 #include <iostream>
-#include <chrono>
-#include <iomanip>
-#include <sstream>
-
-// Helper function to get current timestamp
-std::string getCurrentTimestamp() {
-    auto now = std::chrono::system_clock::now();
-    auto time = std::chrono::system_clock::to_time_t(now);
-    std::tm tm = *std::localtime(&time);
-    
-    std::ostringstream oss;
-    oss << std::put_time(&tm, "%H:%M:%S");
-    return oss.str();
-}
 
 // --- Network Callback Implementations ---
 
 void AppState::setupNetworkCallbacks() {
     if (client) {
-        // Set up client callbacks
+        // Set up client callbacks - all callbacks are queued to run on main thread
         client->setTextMessageCallback([this](const Network::TextMessage& msg) {
-            onTextMessageReceived(msg);
+            mainThreadCallbacks.push([this, msg]() { onTextMessageReceived(msg); });
         });
         
         client->setVoicePacketCallback([this](const Network::VoicePacket& pkt) {
-            onVoicePacketReceived(pkt);
+            mainThreadCallbacks.push([this, pkt]() { onVoicePacketReceived(pkt); });
         });
         
         client->setConnectionCallback([this](bool connected, const std::string& message) {
-            onConnectionStatusChanged(connected, message);
+            mainThreadCallbacks.push([this, connected, message]() { onConnectionStatusChanged(connected, message); });
         });
         
         client->setChannelListCallback([this](const std::vector<Network::ChannelInfo>& channels) {
-            onChannelListReceived(channels);
+            mainThreadCallbacks.push([this, channels]() { onChannelListReceived(channels); });
         });
         
         client->setUserListCallback([this](const std::vector<std::string>& users) {
-            onUserListReceived(users);
+            mainThreadCallbacks.push([this, users]() { onUserListReceived(users); });
         });
+    }
+}
+
+void AppState::processMainThreadCallbacks() {
+    // Process all pending callbacks from background threads
+    std::function<void()> callback;
+    while (mainThreadCallbacks.tryPop(callback)) {
+        callback();
     }
 }
 
@@ -46,9 +40,10 @@ void AppState::onTextMessageReceived(const Network::TextMessage& msg) {
     // Only add messages for the current channel
     if (msg.channel == currentChannel) {
         messages.push_back({
+            msg.channel,
             msg.author,
             msg.content,
-            msg.timestamp.empty() ? getCurrentTimestamp() : msg.timestamp
+            msg.timestamp.empty() ? "" : msg.timestamp
         });
         
         // Update connection status
@@ -152,9 +147,12 @@ void AppState::createChannel(const std::string& channelName, bool isTextChannel)
     // Add channel to server
     server->addChannel(channelName, isTextChannel ? "#" : "🔊", isTextChannel);
     
-    // If this is the server we're connected to, also add to our local channels
+    // Local echo - add channel immediately to UI
+    channels.push_back({channelName, isTextChannel ? "#" : "🔊", isTextChannel});
+    
+    // If this is the server we're connected to, also request updated channel list
     if (client && client->isConnected()) {
-        // Request updated channel list
+        // Request updated channel list (will sync with server)
         client->requestChannelList();
     }
     
