@@ -25,6 +25,10 @@ void AppState::setupNetworkCallbacks() {
         client->setUserListCallback([this](const std::vector<std::string>& users) {
             mainThreadCallbacks.push([this, users]() { onUserListReceived(users); });
         });
+
+        client->setVoiceUserListCallback([this](const std::string& channel, const std::vector<std::string>& users) {
+            mainThreadCallbacks.push([this, channel, users]() { onVoiceUserListReceived(channel, users); });
+        });
     }
 }
 
@@ -117,6 +121,10 @@ void AppState::onUserListReceived(const std::vector<std::string>& users) {
     }
 }
 
+void AppState::onVoiceUserListReceived(const std::string& channel, const std::vector<std::string>& users) {
+    setUsersInVoiceChannel(channel, users);
+}
+
 // --- Channel Controls ---
 
 void AppState::switchChannel(const std::string& channel, bool isTextChannel) {
@@ -132,18 +140,14 @@ void AppState::switchChannel(const std::string& channel, bool isTextChannel) {
     // Set new current channel (text or voice)
     if (isTextChannel) {
         setCurrentChannel(channel);
+        // Dołącz do kanału tekstowego na serwerze i pobierz listę użytkowników
+        client->joinChannel(channel);
+        currentUserListChannel = channel;
+        client->requestUserList();
     } else {
         setCurrentVoiceChannel(channel);
+        // Kanał głosowy — dołączenie obsługuje startVoice -> joinVoiceChannel
     }
-    
-    // Join the channel on the server
-    client->joinChannel(channel);
-    
-    // Remember which channel we're requesting users for
-    currentUserListChannel = channel;
-    
-    // Request user list for the new channel
-    client->requestUserList();
     
     // If it's a voice channel and we're not already in voice, auto-join
     if (!isTextChannel && !isVoiceActive) {
@@ -219,10 +223,10 @@ void AppState::startVoice(const std::string& channel) {
         std::cout << "[VOICE] VoiceClient already initialized, reusing" << std::endl;
     }
     
-    // Set the voice channel
-    std::cout << "[VOICE] Setting voice channel to: " << channel << std::endl;
+    // Dołącz do kanału głosowego na serwerze
+    std::cout << "[VOICE] Joining voice channel: " << channel << std::endl;
     setCurrentVoiceChannel(channel);
-    client->setVoiceChannel(channel);
+    client->joinVoiceChannel(channel);
     
     // Start voice client with callback to send packets via network
     // Only send packets if there are other users in the channel
@@ -257,10 +261,13 @@ void AppState::stopVoice() {
         return;
     }
     
+    // Powiadom serwer że opuszczamy kanał głosowy
+    if (client && client->isConnected()) {
+        client->leaveVoiceChannel();
+    }
+
     std::cout << "[VOICE] Stopping voice thread..." << std::endl;
     voiceClient->stop();
-    // Don't call shutdown here - we want to keep the voice client initialized
-    // for quick restart. Just stop the voice thread.
     isVoiceActive = false;
     setCurrentVoiceChannel("");
     std::cout << "[VOICE] Voice stopped successfully" << std::endl;

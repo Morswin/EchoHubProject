@@ -186,8 +186,8 @@ bool VoiceClient::start(VoicePacketCallback onVoicePacket, std::function<bool()>
     running_ = true;
     
     // Use jthread with stop_token for safe thread interruption
-    voiceThread_ = std::jthread([this, stopToken = std::stop_token()]() {
-        voiceThreadFunction(stopToken);
+    voiceThread_ = std::jthread([this](std::stop_token st) {
+        voiceThreadFunction(st);
     });
     
     std::cout << "Voice client started in thread " << voiceThread_.get_id() << std::endl;

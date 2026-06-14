@@ -45,6 +45,17 @@ namespace Network {
             // Open UDP socket and bind to a local port
             udpSocket_->open(udp::v4());
             udpSocket_->bind(udp::endpoint(udp::v4(), 0)); // Let OS choose a local port
+
+            // Set receive timeout so udpListenLoop can check stop conditions periodically
+#ifdef _WIN32
+            DWORD udpTimeout = 200;
+            setsockopt(udpSocket_->native_handle(), SOL_SOCKET, SO_RCVTIMEO,
+                       reinterpret_cast<const char*>(&udpTimeout), sizeof(udpTimeout));
+#else
+            struct timeval udpTimeout{ 0, 200000 };
+            setsockopt(udpSocket_->native_handle(), SOL_SOCKET, SO_RCVTIMEO,
+                       &udpTimeout, sizeof(udpTimeout));
+#endif
             
             // Get the local UDP port that was assigned
             uint16_t localUdpPort = udpSocket_->local_endpoint().port();
@@ -63,8 +74,8 @@ namespace Network {
             
             // Start the client thread
             connected_ = true;
-            clientThread_ = std::jthread([this, stopToken = std::stop_token()]() {
-                run(stopToken);
+            clientThread_ = std::jthread([this](std::stop_token st) {
+                run(st);
             });
             
             // Start UDP listener thread
@@ -229,6 +240,10 @@ namespace Network {
             }
             case MessageType::USER_LEFT: {
                 handleUserLeft(msg.data);
+                break;
+            }
+            case MessageType::VOICE_USER_LIST: {
+                handleVoiceUserList(msg.data);
                 break;
             }
             case MessageType::ERROR_MSG: {
@@ -422,6 +437,56 @@ namespace Network {
         currentChannel_ = "";
     }
 
+    void Client::joinVoiceChannel(const std::string& channelName) {
+        if (!connected_) return;
+
+        voiceChannel_ = channelName;
+
+        Message msg;
+        msg.type = MessageType::JOIN_VOICE_CHANNEL;
+        MessageData data;
+        data.set("channel", channelName);
+        msg.data = data;
+
+        sendMessage(msg);
+    }
+
+    void Client::leaveVoiceChannel() {
+        if (!connected_ || voiceChannel_.empty()) return;
+
+        Message msg;
+        msg.type = MessageType::LEAVE_VOICE_CHANNEL;
+        MessageData data;
+        data.set("channel", voiceChannel_);
+        msg.data = data;
+
+        sendMessage(msg);
+        voiceChannel_.clear();
+    }
+
+    void Client::handleVoiceUserList(const MessageData& data) {
+        if (!voiceUserListCallback_) return;
+
+        std::string channel = data.get("channel", "");
+        std::string usersStr = data.get("users", "");
+        std::vector<std::string> users;
+
+        if (!usersStr.empty()) {
+            size_t start = 0;
+            size_t end = usersStr.find(',');
+            while (end != std::string::npos) {
+                std::string user = usersStr.substr(start, end - start);
+                if (!user.empty()) users.push_back(user);
+                start = end + 1;
+                end = usersStr.find(',', start);
+            }
+            std::string user = usersStr.substr(start);
+            if (!user.empty()) users.push_back(user);
+        }
+
+        voiceUserListCallback_(channel, users);
+    }
+
     void Client::requestChannelList() {
         if (!connected_) return;
 
@@ -498,47 +563,47 @@ namespace Network {
             return; // Already running
         }
         
-        udpThread_ = std::jthread([this, stopToken = std::stop_token()]() {
-            udpListenLoop(stopToken);
+        udpThread_ = std::jthread([this](std::stop_token st) {
+            udpListenLoop(st);
         });
     }
 
     void Client::udpListenLoop(std::stop_token stopToken) {
-        try {
-            std::vector<uint8_t> buffer(2048); // Max UDP packet size
-            udp::endpoint remoteEndpoint;
-            
-            while (!stopToken.stop_requested() && connected_) {
-                size_t bytesRead = udpSocket_->receive_from(
-                    asio::buffer(buffer), 
-                    remoteEndpoint,
-                    asio::socket_base::message_peek
-                );
-                
-                if (bytesRead > 0) {
-                    // Read the full packet
-                    size_t fullBytesRead = udpSocket_->receive_from(
-                        asio::buffer(buffer), 
-                        remoteEndpoint
-                    );
-                    
-                    if (fullBytesRead >= 4) {
-                        // Extract packet size from first 4 bytes
-                        uint32_t packetSize;
-                        std::memcpy(&packetSize, buffer.data(), 4);
-                        
-                        if (fullBytesRead >= 4 + packetSize) {
-                            std::vector<uint8_t> voiceData(buffer.begin() + 4, buffer.begin() + 4 + packetSize);
-                            handleUdpPacket(voiceData, remoteEndpoint);
-                        }
+        std::vector<uint8_t> buffer(2048);
+        udp::endpoint remoteEndpoint;
+
+        while (!stopToken.stop_requested() && connected_) {
+            asio::error_code ec;
+            size_t bytesRead = udpSocket_->receive_from(
+                asio::buffer(buffer),
+                remoteEndpoint,
+                asio::socket_base::message_peek,
+                ec
+            );
+
+            if (ec) {
+                // SO_RCVTIMEO timeout — sprawdź warunki pętli i kontynuuj
+                if (ec == asio::error::timed_out || ec == asio::error::would_block)
+                    continue;
+                // Socket zamknięty lub inny błąd — wyjdź
+                if (connected_)
+                    std::cerr << "[UDP] Listener error: " << ec.message() << std::endl;
+                break;
+            }
+
+            if (bytesRead > 0) {
+                size_t fullBytesRead = udpSocket_->receive_from(
+                    asio::buffer(buffer), remoteEndpoint, asio::socket_base::message_flags(0), ec);
+
+                if (!ec && fullBytesRead >= 4) {
+                    uint32_t packetSize;
+                    std::memcpy(&packetSize, buffer.data(), 4);
+                    if (fullBytesRead >= 4 + packetSize) {
+                        std::vector<uint8_t> voiceData(buffer.begin() + 4, buffer.begin() + 4 + packetSize);
+                        handleUdpPacket(voiceData, remoteEndpoint);
                     }
                 }
-                
-                // Small sleep to prevent CPU overload
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
-        } catch (const std::exception& e) {
-            std::cerr << "UDP listener error: " << e.what() << std::endl;
         }
     }
 

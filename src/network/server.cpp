@@ -23,8 +23,8 @@ namespace Network {
         }
 
         running_ = true;
-        serverThread_ = std::jthread([this, stopToken = std::stop_token()]() {
-            run(stopToken);
+        serverThread_ = std::jthread([this](std::stop_token st) {
+            run(st);
         });
         
         std::cout << "Server started on port " << port_ << " (TCP) and " << voicePort_ << " (UDP)" << std::endl;
@@ -35,18 +35,25 @@ namespace Network {
         if (!running_) return;
 
         running_ = false;
-        
+
         // Stop the io_context
         ioContext_.stop();
-        
-        // Close all client TCP sockets to unblock handleTcpClient threads
-        std::lock_guard<std::mutex> lock(clientsMutex_);
-        for (auto& pair : tcpClients_) {
-            asio::error_code ec;
-            pair.first->close(ec); // Close the socket to unblock read operations
+
+        // Close ALL client sockets — w tym te przed zalogowaniem (allClients_)
+        {
+            std::lock_guard<std::mutex> lock(allClientsMutex_);
+            for (auto& client : allClients_) {
+                asio::error_code ec;
+                client->tcpSocket.close(ec);
+            }
         }
-        tcpClients_.clear();
-        clientsByUsername_.clear();
+
+        // Close logged-in clients and clear maps
+        {
+            std::lock_guard<std::mutex> lock(clientsMutex_);
+            tcpClients_.clear();
+            clientsByUsername_.clear();
+        }
         
         // Close acceptor and UDP socket
         if (tcpAcceptor_) {
@@ -124,28 +131,38 @@ namespace Network {
     }
 
     void Server::handleTcpClient(std::shared_ptr<tcp::socket> socket) {
+        auto client = std::make_shared<ClientInfo>(std::move(*socket));
+
+        // Rejestruj klienta globalnie — nawet przed zalogowaniem
+        {
+            std::lock_guard<std::mutex> lock(allClientsMutex_);
+            allClients_.insert(client);
+        }
+
         try {
-            // Create client info with the socket
-            auto client = std::make_shared<ClientInfo>(std::move(*socket));
-            
-            // Read data from the client
             asio::streambuf buffer;
-            
             while (running_) {
                 asio::read_until(client->tcpSocket, buffer, '\n');
-                
+
                 std::istream is(&buffer);
                 std::string messageStr;
                 std::getline(is, messageStr);
-                
+
                 if (!messageStr.empty()) {
-                    // Parse the message
                     Message msg = Message::deserialize(messageStr);
                     handleMessage(msg, client);
                 }
             }
         } catch (const std::exception& e) {
-            std::cerr << "TCP client error: " << e.what() << std::endl;
+            if (running_) {
+                std::cerr << "TCP client error: " << e.what() << std::endl;
+            }
+        }
+
+        // Wyrejestruj po zakończeniu wątku
+        {
+            std::lock_guard<std::mutex> lock(allClientsMutex_);
+            allClients_.erase(client);
         }
     }
 
@@ -175,12 +192,12 @@ namespace Network {
                             for (auto& pair : tcpClients_) {
                                 auto client = pair.second;
                                 if (client->udpEndpoint == senderEndpoint) {
-                                    // Forward to all clients in the same channel
+                                    if (client->currentVoiceChannel.empty()) break;
                                     VoicePacket pkt;
-                                    pkt.channel = client->currentChannel;
+                                    pkt.channel = client->currentVoiceChannel;
                                     pkt.sender = client->username;
                                     pkt.audioData = voiceData;
-                                    broadcastVoicePacket(pkt, client->currentChannel);
+                                    broadcastVoicePacket(pkt, client->currentVoiceChannel);
                                     break;
                                 }
                             }
@@ -218,6 +235,15 @@ namespace Network {
             case MessageType::JOIN_CHANNEL: {
                 std::string channelName = msg.data.get("channel", "");
                 handleJoinChannel(channelName, client);
+                break;
+            }
+            case MessageType::JOIN_VOICE_CHANNEL: {
+                std::string channelName = msg.data.get("channel", "");
+                handleJoinVoiceChannel(channelName, client);
+                break;
+            }
+            case MessageType::LEAVE_VOICE_CHANNEL: {
+                handleLeaveVoiceChannel(client);
                 break;
             }
             case MessageType::CHANNEL_LIST_REQUEST: {
@@ -470,30 +496,29 @@ namespace Network {
 
     void Server::broadcastVoicePacket(const VoicePacket& pkt, const std::string& channel) {
         std::lock_guard<std::mutex> lock(clientsMutex_);
-        
+
+        // Przygotuj pakiet raz (format: 4 bajty rozmiaru + dane)
+        std::vector<uint8_t> packet;
+        uint32_t size = static_cast<uint32_t>(pkt.audioData.size());
+        packet.resize(4 + pkt.audioData.size());
+        std::memcpy(packet.data(), &size, 4);
+        std::memcpy(packet.data() + 4, pkt.audioData.data(), pkt.audioData.size());
+
         for (auto& pair : tcpClients_) {
             auto client = pair.second;
-            
-            // Only send to clients in the same channel
-            if (client->currentChannel != channel) {
-                continue;
-            }
-            
-            // Send via UDP for better performance
+
+            // Tylko klienci w tym samym kanale GŁOSOWYM
+            if (client->currentVoiceChannel != channel) continue;
+
+            // Nie odsyłaj pakietu nadawcy (słyszałby własny głos z opóźnieniem)
+            if (client->username == pkt.sender) continue;
+
             try {
-                // Format: first 4 bytes = packet size, then the actual data
-                std::vector<uint8_t> packet;
-                uint32_t size = static_cast<uint32_t>(pkt.audioData.size());
-                packet.resize(4 + pkt.audioData.size());
-                std::memcpy(packet.data(), &size, 4);
-                std::memcpy(packet.data() + 4, pkt.audioData.data(), pkt.audioData.size());
-                
-                // Send to the client's UDP endpoint
                 if (client->udpEndpoint.address().to_string() != "0.0.0.0") {
                     udpSocket_->send_to(asio::buffer(packet), client->udpEndpoint);
                 }
             } catch (const std::exception& e) {
-                std::cerr << "Error sending voice packet to client: " << e.what() << std::endl;
+                std::cerr << "Error sending voice packet to " << client->username << ": " << e.what() << std::endl;
             }
         }
     }
@@ -527,6 +552,83 @@ namespace Network {
     void Server::addUser(const std::string& username, const std::string& password) {
         std::lock_guard<std::mutex> lock(usersMutex_);
         users_[username] = {password};
+    }
+
+    void Server::handleJoinVoiceChannel(const std::string& channelName, std::shared_ptr<ClientInfo> client) {
+        std::string oldVoiceChannel;
+        {
+            std::lock_guard<std::mutex> lock(channelsMutex_);
+
+            oldVoiceChannel = client->currentVoiceChannel;
+
+            // Opuść stary kanał głosowy
+            if (!oldVoiceChannel.empty()) {
+                auto it = channels_.find(oldVoiceChannel);
+                if (it != channels_.end()) {
+                    it->second.users.erase(client->username);
+                }
+                client->currentVoiceChannel.clear();
+            }
+
+            // Dołącz do nowego kanału głosowego (tylko jeśli to kanał głosowy)
+            auto it = channels_.find(channelName);
+            if (it != channels_.end() && !it->second.isTextChannel) {
+                client->currentVoiceChannel = channelName;
+                it->second.users.insert(client->username);
+            }
+        }
+
+        // Broadcast zaktualizowanych list użytkowników (poza lockiem channelsMutex_)
+        if (!oldVoiceChannel.empty()) {
+            broadcastVoiceUserList(oldVoiceChannel);
+        }
+        if (!channelName.empty()) {
+            broadcastVoiceUserList(channelName);
+        }
+    }
+
+    void Server::handleLeaveVoiceChannel(std::shared_ptr<ClientInfo> client) {
+        std::string oldVoiceChannel;
+        {
+            std::lock_guard<std::mutex> lock(channelsMutex_);
+
+            oldVoiceChannel = client->currentVoiceChannel;
+            if (!oldVoiceChannel.empty()) {
+                auto it = channels_.find(oldVoiceChannel);
+                if (it != channels_.end()) {
+                    it->second.users.erase(client->username);
+                }
+                client->currentVoiceChannel.clear();
+            }
+        }
+
+        if (!oldVoiceChannel.empty()) {
+            broadcastVoiceUserList(oldVoiceChannel);
+        }
+    }
+
+    void Server::broadcastVoiceUserList(const std::string& channelName) {
+        // Zbierz listę użytkowników w kanale głosowym
+        std::string usersStr;
+        {
+            std::lock_guard<std::mutex> lock(channelsMutex_);
+            auto it = channels_.find(channelName);
+            if (it != channels_.end()) {
+                bool first = true;
+                for (const auto& user : it->second.users) {
+                    if (!first) usersStr += ",";
+                    usersStr += user;
+                    first = false;
+                }
+            }
+        }
+
+        MessageData data;
+        data.set("channel", channelName);
+        data.set("users", usersStr);
+
+        // Wyślij do wszystkich klientów
+        broadcastMessage(Message{MessageType::VOICE_USER_LIST, data});
     }
 
     void Server::addChannel(const std::string& name, const std::string& icon, bool isTextChannel) {

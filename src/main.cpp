@@ -232,6 +232,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                 g_AppState.getCurrentVoiceChannelRef(),
                 g_AppState.getIsVoiceActive(),
                 g_AppState.getUsersInChannel(),
+                g_AppState.getUsersInVoiceChannels(),
                 g_AppState.getSavedServers(),
                 [&](const std::string& msg) {
                     // Send message through network client if connected

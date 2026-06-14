@@ -1,7 +1,7 @@
 #ifndef ECHOHUBPROJECT_VIEWS_HPP
 #define ECHOHUBPROJECT_VIEWS_HPP
 
-
+#include <unordered_map>
 #include "molecules.hpp"
 #include "atoms.hpp"
 #include "theme.hpp"
@@ -206,6 +206,7 @@ namespace Views {
         const std::string& currentVoiceChannel,
         bool isVoiceActive,
         const std::vector<std::string>& usersInChannel,
+        const std::unordered_map<std::string, std::vector<std::string>>& usersInVoiceChannels,
         const std::vector<std::string>& savedServers,
         const std::function<void(const std::string&)>& onSendMessage = {},
         const std::function<void()>& onCreateServer = {},
@@ -270,34 +271,46 @@ namespace Views {
         Atoms::Text("Kanały głosowe", theme, 1);
         for (const auto& channel : channels) {
             if (!channel.isTextChannel) {
-                // Check if this is the current voice channel
                 bool isActiveVoice = (currentVoiceChannel == channel.name);
-                Molecules::ChannelListItem(channel.name, channel.icon, isActiveVoice, theme, 
+                Molecules::ChannelListItem(channel.name, channel.icon, isActiveVoice, theme,
                     [&, channelName = channel.name]() {
                         if (onSwitchChannel) onSwitchChannel(channelName, false);
                     }
                 );
+                // Użytkownicy w tym kanale głosowym
+                auto it = usersInVoiceChannels.find(channel.name);
+                if (it != usersInVoiceChannels.end() && !it->second.empty()) {
+                    ImGui::Indent(16.0f);
+                    for (const auto& user : it->second) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(120, 220, 120, 255));
+                        ImGui::TextUnformatted(("🎤 " + user).c_str());
+                        ImGui::PopStyleColor();
+                    }
+                    ImGui::Unindent(16.0f);
+                }
             }
+        }
+
+        // Wskaźnik aktywnego połączenia głosowego na dole paska bocznego
+        if (isVoiceActive && !currentVoiceChannel.empty()) {
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(100, 220, 100, 255));
+            ImGui::TextUnformatted(("🟢 " + currentVoiceChannel).c_str());
+            ImGui::PopStyleColor();
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(180, 180, 180, 255));
+            ImGui::TextUnformatted("Połączono");
+            ImGui::PopStyleColor();
+            if (Atoms::Button("Rozłącz", theme, {-1, 24}, onDisconnectVoice)) {}
         }
         ImGui::EndChild();
         ImGui::SameLine();
 
         // 3. MainContent (czat)
         ImGui::BeginChild("MainContent");
-        // Nagłówek z indykatorem voice i nazwą kanału
-        ImGui::BeginGroup();
+        // Nagłówek z nazwą kanału
         Atoms::Text("# " + currentChannel, theme, 0);
-        ImGui::SameLine();
-        if (isVoiceActive) {
-            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 255, 0, 255));
-            Atoms::Text("🎤", theme, 0);
-            ImGui::PopStyleColor();
-            ImGui::SameLine();
-            Atoms::Text("Aktywny", theme, 2);
-            ImGui::SameLine();
-            if (Atoms::Button("🔴 Rozłącz", theme, {0, 20}, onDisconnectVoice)) {}
-        }
-        ImGui::EndGroup();
         Atoms::Separator(theme);
         ImGui::Spacing();
 

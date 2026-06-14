@@ -99,6 +99,7 @@ public:
     void onConnectionStatusChanged(bool connected, const std::string& message);
     void onChannelListReceived(const std::vector<Network::ChannelInfo>& channels);
     void onUserListReceived(const std::vector<std::string>& users);
+    void onVoiceUserListReceived(const std::string& channel, const std::vector<std::string>& users);
     
     // --- Channel Controls ---
     void switchChannel(const std::string& channel, bool isTextChannel);

@@ -52,6 +52,12 @@ namespace Network {
         using UserListCallback = std::function<void(const std::vector<std::string>&)>;
 
         /**
+         * @brief Callback for voice channel user list updates.
+         * Parametry: nazwa kanału, lista użytkowników.
+         */
+        using VoiceUserListCallback = std::function<void(const std::string&, const std::vector<std::string>&)>;
+
+        /**
          * @brief Constructor.
          * @param serverAddress Server IP address or hostname.
          * @param serverPort Server TCP port.
@@ -113,6 +119,16 @@ namespace Network {
         void leaveChannel();
 
         /**
+         * @brief Join a voice channel (niezależnie od kanału tekstowego).
+         */
+        void joinVoiceChannel(const std::string& channelName);
+
+        /**
+         * @brief Leave the current voice channel.
+         */
+        void leaveVoiceChannel();
+
+        /**
          * @brief Set the current voice channel for UDP packets.
          */
         void setVoiceChannel(const std::string& channel);
@@ -155,6 +171,13 @@ namespace Network {
          */
         void setUserListCallback(UserListCallback callback) {
             userListCallback_ = callback;
+        }
+
+        /**
+         * @brief Set callback for voice channel user list updates.
+         */
+        void setVoiceUserListCallback(VoiceUserListCallback callback) {
+            voiceUserListCallback_ = callback;
         }
 
         /**
@@ -202,6 +225,7 @@ namespace Network {
         ConnectionCallback connectionCallback_;
         ChannelListCallback channelListCallback_;
         UserListCallback userListCallback_;
+        VoiceUserListCallback voiceUserListCallback_;
 
         // --- Message Queues ---
         ThreadSafeQueue<std::string> outgoingMessages_;
@@ -220,6 +244,7 @@ namespace Network {
         void handleUserListResponse(const MessageData& data);
         void handleUserJoined(const MessageData& data);
         void handleUserLeft(const MessageData& data);
+        void handleVoiceUserList(const MessageData& data);
 
         // --- Helper Methods ---
         void sendMessage(const Message& msg);

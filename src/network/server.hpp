@@ -99,7 +99,8 @@ namespace Network {
         // --- Client Management ---
         struct ClientInfo {
             std::string username;
-            std::string currentChannel;
+            std::string currentChannel;       // kanał tekstowy
+            std::string currentVoiceChannel;  // kanał głosowy (niezależny)
             tcp::socket tcpSocket;
             udp::endpoint udpEndpoint;
             
@@ -111,6 +112,10 @@ namespace Network {
         std::unordered_map<tcp::socket*, std::shared_ptr<ClientInfo>> tcpClients_;
         std::unordered_map<std::string, std::shared_ptr<ClientInfo>> clientsByUsername_;
         std::mutex clientsMutex_;
+
+        // Wszyscy klienci — w tym przed zalogowaniem (do zamknięcia przy stop())
+        std::unordered_set<std::shared_ptr<ClientInfo>> allClients_;
+        std::mutex allClientsMutex_;
 
         // --- Channel Management ---
         struct Channel {
@@ -147,10 +152,13 @@ namespace Network {
         void handleVoicePacket(const VoicePacket& voicePkt, std::shared_ptr<ClientInfo> client);
         void handleLoginRequest(const LoginData& loginData, std::shared_ptr<ClientInfo> client);
         void handleJoinChannel(const std::string& channelName, std::shared_ptr<ClientInfo> client);
+        void handleJoinVoiceChannel(const std::string& channelName, std::shared_ptr<ClientInfo> client);
+        void handleLeaveVoiceChannel(std::shared_ptr<ClientInfo> client);
 
         // --- Helper Methods ---
         void broadcastMessage(const Message& msg, const std::string& channel = "");
         void broadcastVoicePacket(const VoicePacket& pkt, const std::string& channel);
+        void broadcastVoiceUserList(const std::string& channelName);
         void sendMessageToClient(std::shared_ptr<ClientInfo> client, const Message& msg);
         bool authenticateUser(const std::string& username, const std::string& password);
         void addUser(const std::string& username, const std::string& password);
