@@ -9,11 +9,7 @@ namespace Network {
           tcpAcceptor_(std::make_unique<tcp::acceptor>(ioContext_, tcp::endpoint(tcp::v4(), port))),
           udpSocket_(std::make_unique<udp::socket>(ioContext_, udp::endpoint(udp::v4(), voicePort))) {
         
-        // Add default channels
-        addChannel("ogólny", "#", true);
-        addChannel("pomoc-kod", "#", true);
-        addChannel("Poczekalnia", "🔊", false);
-        addChannel("Pokój gier", "🔊", false);
+        std::cout << "[SERVER CONSTRUCTOR] Server instance created for port " << port << " (TCP), " << voicePort << " (UDP)" << std::endl;
     }
 
     Server::~Server() {
@@ -406,6 +402,7 @@ namespace Network {
     }
 
     void Server::broadcastChannelList() {
+        std::cout << "[SERVER] broadcastChannelList() called" << std::endl;
         std::lock_guard<std::mutex> lock(clientsMutex_);
         
         // Build channel list string
@@ -421,6 +418,9 @@ namespace Network {
             }
         }
         
+        std::cout << "[SERVER] Channel list string: " << channelsStr << std::endl;
+        std::cout << "[SERVER] Number of connected clients: " << tcpClients_.size() << std::endl;
+        
         // Send to all clients
         Message msg;
         msg.type = MessageType::CHANNEL_LIST_RESPONSE;
@@ -430,10 +430,12 @@ namespace Network {
             try {
                 std::string msgStr = msg.serialize() + "\n";
                 asio::write(pair.second->tcpSocket, asio::buffer(msgStr));
+                std::cout << "[SERVER] Channel list sent to a client" << std::endl;
             } catch (const std::exception& e) {
-                std::cerr << "Error sending channel list to client: " << e.what() << std::endl;
+                std::cerr << "[SERVER] ERROR sending channel list to client: " << e.what() << std::endl;
             }
         }
+        std::cout << "[SERVER] broadcastChannelList() completed" << std::endl;
     }
 
     void Server::broadcastVoicePacket(const VoicePacket& pkt, const std::string& channel) {
@@ -498,11 +500,14 @@ namespace Network {
     }
 
     void Server::addChannel(const std::string& name, const std::string& icon, bool isTextChannel) {
+        std::cout << "[SERVER] Adding channel: " << name << " (" << (isTextChannel ? "text" : "voice") << ")" << std::endl;
         std::lock_guard<std::mutex> lock(channelsMutex_);
         channels_[name] = {name, icon, isTextChannel, {}};
         
+        std::cout << "[SERVER] Channel added. Broadcasting channel list to clients..." << std::endl;
         // Notify all clients about the new channel list
         broadcastChannelList();
+        std::cout << "[SERVER] Channel list broadcasted." << std::endl;
     }
 
     std::vector<ChannelInfo> Server::getChannels() const {

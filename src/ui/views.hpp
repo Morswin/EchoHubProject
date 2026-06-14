@@ -10,6 +10,14 @@
 
 
 namespace Views {
+    // Helper function to center a window
+    inline ImVec2 CenteredPosition(const ImVec2& size) {
+        ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+        return ImVec2(
+            (displaySize.x - size.x) * 0.5f,
+            (displaySize.y - size.y) * 0.5f
+        );
+    }
     struct Channel {
         std::string name;
         std::string icon;
@@ -23,13 +31,7 @@ namespace Views {
             const std::function<void()>& onRegister = {}
         ) {
         ImGui::SetNextWindowSize({400, 400});
-        ImGui::SetNextWindowPos(
-            ImVec2(
-                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
-                (ImGui::GetIO().DisplaySize.y - 400) * 0.5f
-            ),
-            ImGuiCond_Appearing
-        );
+        ImGui::SetNextWindowPos(CenteredPosition({400, 400}), ImGuiCond_Always);
         ImGui::Begin("EchoHub - Wybierz użytkownika", nullptr,
             ImGuiWindowFlags_NoTitleBar |
             ImGuiWindowFlags_NoResize |
@@ -79,13 +81,7 @@ namespace Views {
             const std::function<void()>& onCreateServer = {}
         ) {
         ImGui::SetNextWindowSize({400, 300});
-        ImGui::SetNextWindowPos(
-            ImVec2(
-                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
-                (ImGui::GetIO().DisplaySize.y - 300) * 0.5f
-            ),
-            ImGuiCond_Appearing
-        );
+        ImGui::SetNextWindowPos(CenteredPosition({400, 300}), ImGuiCond_Always);
 
         ImGui::Begin("EchoHub", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         Atoms::Text("Klon Discord/TeamSpeak", theme, 0);
@@ -153,17 +149,7 @@ namespace Views {
         const std::function<void()>& onCancel = {}
     ) {
         ImGui::SetNextWindowSize({400, 300});
-        ImGui::SetNextWindowPos(
-            ImVec2(
-                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
-                (ImGui::GetIO().DisplaySize.y - 300) * 0.5f
-            ),
-            ImGuiCond_Appearing
-        );
-        // ImGui::SetWindowPos(
-        //     ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
-        //     ImGuiCond_Once
-        // );
+        ImGui::SetNextWindowPos(CenteredPosition({400, 300}), ImGuiCond_Always);
         ImGui::Begin("Dołącz do serwera", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
         Atoms::Text("Dołącz do serwera", theme, 0);
@@ -188,13 +174,7 @@ namespace Views {
         const std::function<void()>& onBack = {}
     ) {
         ImGui::SetNextWindowSize({400, 250});
-        ImGui::SetNextWindowPos(
-            ImVec2(
-                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
-                (ImGui::GetIO().DisplaySize.y - 250) * 0.5f
-            ),
-            ImGuiCond_Appearing
-        );
+        ImGui::SetNextWindowPos(CenteredPosition({400, 250}), ImGuiCond_Always);
 
         ImGui::Begin("Stwórz serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         Atoms::Text("Stwórz swój serwer", theme, 0);
@@ -446,13 +426,7 @@ namespace Views {
 
     inline void ConnectingLoadingView(const Theme& theme, const std::string& status = "") {
         ImGui::SetNextWindowSize({400, 200});
-        ImGui::SetNextWindowPos(
-            ImVec2(
-                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,  // (1920-400)/2 = 760
-                (ImGui::GetIO().DisplaySize.y - 200) * 0.5f   // (1080-200)/2 = 440
-            ),
-            ImGuiCond_Appearing
-        );
+        ImGui::SetNextWindowPos(CenteredPosition({400, 200}), ImGuiCond_Always);
 
         ImGui::Begin("Nawiązywanie połączenia", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         // Spinner (złoty)
@@ -506,13 +480,7 @@ namespace Views {
         const std::function<void()>& onCancel = {}
     ) {
         ImGui::SetNextWindowSize({400, 250});
-        ImGui::SetNextWindowPos(
-            ImVec2(
-                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
-                (ImGui::GetIO().DisplaySize.y - 250) * 0.5f
-            ),
-            ImGuiCond_Appearing
-        );
+        ImGui::SetNextWindowPos(CenteredPosition({400, 250}), ImGuiCond_Always);
         ImGui::Begin("Utwórz nowy kanał", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         
         Atoms::Text("Utwórz nowy kanał", theme, 0);
@@ -551,13 +519,7 @@ namespace Views {
     const std::function<void()>& onBackToLogin = {}
 ) {
         ImGui::SetNextWindowSize({400, 300});
-        ImGui::SetNextWindowPos(
-            ImVec2(
-                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
-                (ImGui::GetIO().DisplaySize.y - 300) * 0.5f
-            ),
-            ImGuiCond_Appearing
-        );
+        ImGui::SetNextWindowPos(CenteredPosition({400, 300}), ImGuiCond_Always);
         ImGui::Begin("EchoHub - Nowy użytkownik", nullptr,
             ImGuiWindowFlags_NoTitleBar |
             ImGuiWindowFlags_NoResize |
