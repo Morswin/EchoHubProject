@@ -117,20 +117,21 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             break;
 
         case EViewState::CREATE_NEW_SERVER_VIEW:
-            Views::CreateNewServerView(g_AppState.getServerName(), g_AppState.getRegion(), g_AppState.getTheme(),
+            Views::CreateNewServerView(g_AppState.getServerName(), g_AppState.getTheme(),
                 [&]() { 
                     // Create server and connect to it
                     if (g_AppState.server && g_AppState.server->isRunning()) {
                         g_AppState.server->stop();
                     }
                     g_AppState.server = std::make_unique<Network::Server>(9987, 9988);
-                    g_AppState.isServerRunning = g_AppState.server->start();
                     
-                    // Add default channels
+                    // Add default channels BEFORE starting the server
                     g_AppState.server->addChannel("ogólny", "#", true);
                     g_AppState.server->addChannel("pomoc-kod", "#", true);
                     g_AppState.server->addChannel("Poczekalnia", "🔊", false);
                     g_AppState.server->addChannel("Pokój gier", "🔊", false);
+                    
+                    g_AppState.isServerRunning = g_AppState.server->start();
                     
                     if (g_AppState.isServerRunning) {
                         // Auto-connect to our own server

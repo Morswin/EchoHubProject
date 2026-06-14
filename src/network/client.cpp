@@ -238,13 +238,6 @@ namespace Network {
             
             // Request channel list after successful login
             requestChannelList();
-            
-            // Auto-join the first text channel (default channel)
-            // This will be set properly when channel list is received
-            // For now, join a default channel if we know one exists
-            if (currentChannel_.empty()) {
-                joinChannel("ogólny");
-            }
         }
     }
 
@@ -283,6 +276,16 @@ namespace Network {
                 }
             }
             channelListCallback_(channels);
+            
+            // Auto-join the first text channel if we haven't joined any yet
+            if (currentChannel_.empty()) {
+                for (const auto& channel : channels) {
+                    if (channel.isTextChannel) {
+                        joinChannel(channel.name);
+                        break;
+                    }
+                }
+            }
         }
     }
 

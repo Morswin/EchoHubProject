@@ -43,7 +43,7 @@ namespace Views {
         static std::vector<std::string> users = UserManager::loadUsers();
         static int selectedUserIndex = -1;
 
-        if (ImGui::BeginCombo("Wybierz użytkownika", selectedUserIndex >= 0 ? users[selectedUserIndex].c_str() : "Nowy użytkownik")) {
+        if (ImGui::BeginCombo("Wybierz użytkownika", selectedUserIndex >= 0 ? users[selectedUserIndex].c_str() : "Zarejestruj nowego użytkownika")) {
             for (int i = 0; i < users.size(); i++) {
                 bool isSelected = (selectedUserIndex == i);
                 if (ImGui::Selectable(users[i].c_str(), isSelected)) {
@@ -56,19 +56,15 @@ namespace Views {
         }
 
         ImGui::Spacing();
-        Atoms::InputText("Nazwa użytkownika", username, theme, {200, 0}, "Wprowadź swoją nazwę");
-        ImGui::Spacing();
 
-        // Login button is disabled if username is empty
+        // Login button is disabled if no user is selected
         if (Atoms::Button("Zaloguj się", theme, {200, 40}, [&]() {
-            if (!username.empty()) {
-                if (selectedUserIndex >= 0) {
-                    username = users[selectedUserIndex];
-                }
+            if (selectedUserIndex >= 0) {
+                username = users[selectedUserIndex];
                 UserManager::setCurrentUser(username);
                 if (onLogin) onLogin();
             }
-        }, username.empty())) {}
+        }, selectedUserIndex < 0)) {}
 
         ImGui::Spacing();
         if (Atoms::Button("Zarejestruj nowego użytkownika", theme, {200, 40}, onRegister)) {}
@@ -114,9 +110,10 @@ namespace Views {
         const std::function<void()>& onDirectMessage = {}
     ) {
         // Grid: [ServerSidebar | SubSidebar | MainContent]
+        // Use full screen size and allow resize
         ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
         ImGui::SetNextWindowPos({0, 0});
-        ImGui::Begin("EchoHub - Znajomi", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+        ImGui::Begin("EchoHub - Znajomi", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
 
         // 1. ServerSidebar (ikony)
         ImGui::BeginChild("ServerSidebar", {72, -1}, true);
@@ -186,20 +183,15 @@ namespace Views {
 
     inline void CreateNewServerView(
         std::string& serverName,
-        std::string& region,
         const Theme& theme,
         const std::function<void()>& onCreate = {},
         const std::function<void()>& onBack = {}
     ) {
-        ImGui::SetNextWindowSize({400, 300});
-        // ImGui::SetNextWindowPos(
-        //     ImVec2(ImGui::GetIO().DisplaySize.x * 0.5f, ImGui::GetIO().DisplaySize.y * 0.5f),
-        //     ImGuiCond_Once
-        // );
+        ImGui::SetNextWindowSize({400, 250});
         ImGui::SetNextWindowPos(
             ImVec2(
                 (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
-                (ImGui::GetIO().DisplaySize.y - 300) * 0.5f
+                (ImGui::GetIO().DisplaySize.y - 250) * 0.5f
             ),
             ImGuiCond_Appearing
         );
@@ -209,20 +201,6 @@ namespace Views {
         ImGui::Spacing();
 
         Atoms::InputText("Nazwa serwera", serverName, theme, {200, 0}, "Serwer programistyczny");
-        ImGui::Spacing();
-
-        // Select dla regionu
-        if (ImGui::BeginCombo("Region serwera", region.c_str())) {
-            const std::vector<std::string> regions = {"Europa Środkowa (Poland)", "Europa Zachodnia (Frankfurt)"};
-            for (const auto& r : regions) {
-                bool isSelected = (r == region);
-                if (ImGui::Selectable(r.c_str(), isSelected)) {
-                    region = r;
-                }
-                if (isSelected) ImGui::SetItemDefaultFocus();
-            }
-            ImGui::EndCombo();
-        }
         ImGui::Spacing();
 
         if (Atoms::Button("Stwórz", theme, {200, 40}, onCreate)) {}
@@ -252,7 +230,7 @@ namespace Views {
         ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
         ImGui::SetNextWindowPos({0, 0});
 
-        ImGui::Begin("EchoHub - Serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+        ImGui::Begin("EchoHub - Serwer", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
         // 1. ServerSidebar (ikony serwerów)
         ImGui::BeginChild("ServerSidebar", {72, -1}, true);
 
