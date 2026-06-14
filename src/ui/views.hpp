@@ -553,8 +553,10 @@ namespace Views {
 
         // 3. MainContent (czat DM)
         ImGui::BeginChild("MainContent");
-        // Nagłówek
+        // Nagłówek z przyciskiem powrotu
         ImGui::BeginGroup();
+        if (Atoms::Button("← Wróć", theme, {0, 30}, onBack)) {}
+        ImGui::SameLine();
         Atoms::Text("DM z " + friendName, theme, 0);
         ImGui::EndGroup();
         Atoms::Separator(theme);

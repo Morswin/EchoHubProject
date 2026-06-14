@@ -8,8 +8,25 @@ VoiceClient::VoiceClient() : pcmBuffer(FRAME_SIZE), playbackBuffer_(FRAME_SIZE) 
 }
 
 VoiceClient::~VoiceClient() {
-    // Stop the voice thread first
-    stop();
+    // Signal the voice thread to stop
+    shouldStop_ = true;
+    running_ = false;
+    
+    // Try to join the thread with a timeout to avoid deadlock
+    if (voiceThread_.joinable()) {
+        // Try to join with a short timeout
+        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+        while (voiceThread_.joinable() && 
+               std::chrono::steady_clock::now() - start < std::chrono::milliseconds(100)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        
+        // If thread is still joinable, detach it to avoid deadlock
+        if (voiceThread_.joinable()) {
+            std::cerr << "[VOICE] Warning: Voice thread did not stop in time, detaching" << std::endl;
+            voiceThread_.detach();
+        }
+    }
     
     // Then shutdown audio resources
     shutdown();
@@ -104,14 +121,23 @@ bool VoiceClient::initialize() {
 }
 
 void VoiceClient::shutdown() {
-    // Unbind and destroy streams first
+    // Stop the voice thread first (if running)
+    stop();
+    
+    // Unbind streams from devices first
     if (micStream) {
         SDL_UnbindAudioStream(micStream);
+    }
+    if (speakerStream) {
+        SDL_UnbindAudioStream(speakerStream);
+    }
+    
+    // Destroy streams
+    if (micStream) {
         SDL_DestroyAudioStream(micStream);
         micStream = nullptr;
     }
     if (speakerStream) {
-        SDL_UnbindAudioStream(speakerStream);
         SDL_DestroyAudioStream(speakerStream);
         speakerStream = nullptr;
     }
@@ -233,8 +259,19 @@ void VoiceClient::stop() {
     shouldStop_ = true;
     running_ = false;
     
+    // Try to join the thread with a timeout
     if (voiceThread_.joinable()) {
-        voiceThread_.join();
+        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+        while (voiceThread_.joinable() && 
+               std::chrono::steady_clock::now() - start < std::chrono::milliseconds(100)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        
+        // If thread is still joinable, detach it
+        if (voiceThread_.joinable()) {
+            std::cerr << "[VOICE] Warning: Voice thread did not stop in time, detaching" << std::endl;
+            voiceThread_.detach();
+        }
     }
     
     std::cout << "Voice client stopped" << std::endl;

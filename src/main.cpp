@@ -162,6 +162,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                     if (g_AppState.getServerName().empty()) {
                         std::cerr << "[SERVER CREATION] ERROR: Server name cannot be empty!" << std::endl;
                         g_AppState.connectionStatus = "Server name cannot be empty";
+                        g_AppState.setView(EViewState::LANDING_VIEW);
                         return;
                     }
                     std::cout << "[SERVER CREATION] Step 1: Stopping existing server if running..." << std::endl;

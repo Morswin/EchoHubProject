@@ -93,7 +93,11 @@ namespace Atoms {
         ImGuiInputTextFlags flags = password ? ImGuiInputTextFlags_Password : 0;
 
         // --- Wywołanie ImGui::InputText z char* ---
-        ImGui::InputText(("##" + label).c_str(), buffer.data(), buffer.capacity(), flags);
+        char* buf = buffer.data();
+        if (ImGui::InputText(("##" + label).c_str(), buf, buffer.capacity(), flags)) {
+            // Update the string length based on the null-terminated content
+            buffer = buf;
+        }
 
         // --- Podpowiedź (placeholder) ---
         if (buffer.empty() && !hint.empty()) {
