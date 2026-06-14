@@ -211,7 +211,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             );
             break;
 
-        case EViewState::CONNECTING_LOADING_VIEW:
+        case EViewState::CONNECTING_LOADING_VIEW: { // <--- DODAJ TĘ KLAMRĘ
             Views::ConnectingLoadingView(g_AppState.getTheme(), g_AppState.connectionStatus);
             // If connected, transition to server view
             if (g_AppState.isConnectedToServer) {
@@ -220,7 +220,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             }
             // Check for connection timeout (5 seconds)
             else if (g_AppState.getIsConnecting()) {
-                auto now = std::chrono::steady_clock::now();
+                auto now = std::chrono::steady_clock::now(); // Pierwsza zmienna
                 if (now - g_AppState.connectionStartTime > AppState::CONNECTION_TIMEOUT) {
                     g_AppState.connectionStatus = "Connection timeout: Server not responding";
                     g_AppState.setIsConnecting(false);
@@ -228,7 +228,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                 }
             }
             // Fallback: auto-transition after delay if connection status hasn't been updated
-            static int counter = 0;
+            static int counter = 0; // Druga zmienna
             if (counter++ > 120) { // Po 120 klatkach (ok. 2s)
                 if (g_AppState.client && g_AppState.client->isConnected()) {
                     g_AppState.setView(EViewState::SERVER_VIEW);
@@ -237,7 +237,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                     // Server is running, try to connect locally
                     g_AppState.client = std::make_unique<Network::Client>("127.0.0.1", 9987, 9988);
                     g_AppState.setupNetworkCallbacks();
-                    std::string username = g_AppState.getUsername().empty() ? g_AppState.nickname : g_AppState.getUsername();
+                    std::string username = g_AppState.getUsername().empty() ? g_AppState.nickname : g_AppState.getUsername(); // Trzecia zmienna
                     g_AppState.setIsConnecting(true);
                     g_AppState.connectionStartTime = std::chrono::steady_clock::now();
                     g_AppState.client->connect(username, "password");
@@ -245,6 +245,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                 counter = 0;
             }
             break;
+        }
 
         case EViewState::ERROR_DISCONNECTED_VIEW:
             Views::ErrorDisconnectedView(g_AppState.getTheme(),

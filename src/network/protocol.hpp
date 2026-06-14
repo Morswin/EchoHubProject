@@ -40,7 +40,7 @@ namespace Network {
         SERVER_INFO_RESPONSE,
         
         // Error handling
-        ERROR
+        ERROR_MSG
     };
 
     // Convert MessageType to string
@@ -63,7 +63,7 @@ namespace Network {
             case MessageType::USER_LIST_RESPONSE: return "USER_LIST_RESPONSE";
             case MessageType::SERVER_INFO_REQUEST: return "SERVER_INFO_REQUEST";
             case MessageType::SERVER_INFO_RESPONSE: return "SERVER_INFO_RESPONSE";
-            case MessageType::ERROR: return "ERROR";
+            case MessageType::ERROR_MSG: return "ERROR";
             default: return "UNKNOWN";
         }
     }
@@ -87,8 +87,8 @@ namespace Network {
         if (str == "USER_LIST_RESPONSE") return MessageType::USER_LIST_RESPONSE;
         if (str == "SERVER_INFO_REQUEST") return MessageType::SERVER_INFO_REQUEST;
         if (str == "SERVER_INFO_RESPONSE") return MessageType::SERVER_INFO_RESPONSE;
-        if (str == "ERROR") return MessageType::ERROR;
-        return MessageType::ERROR;
+        if (str == "ERROR") return MessageType::ERROR_MSG;
+        return MessageType::ERROR_MSG;
     }
 
     // --- Simple Key-Value Parser ---
