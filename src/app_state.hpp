@@ -4,9 +4,13 @@
 #include <SDL3/SDL.h>
 #include <vector>
 #include <string>
+#include <memory>
 #include "ui/theme.hpp"
 #include "ui/molecules.hpp"
 #include "ui/views.hpp"
+#include "network/server.hpp"
+#include "network/client.hpp"
+#include "voice/voice_client.hpp"
 
 class AppState {
 public:
@@ -50,6 +54,12 @@ public:
 
     // --- Theme ---
     Theme theme = Theme::createGoldGalaxyTheme();
+
+    // --- Network ---
+    std::unique_ptr<Network::Server> server;
+    std::unique_ptr<Network::Client> client;
+    std::unique_ptr<VoiceClient> voiceClient;
+    bool isServerRunning = false;
 
     // --- Gettery/Settery ---
     [[nodiscard]] EViewState getCurrentView() const { return currentView; }

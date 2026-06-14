@@ -4,6 +4,7 @@
 
 #include "atoms.hpp"
 #include "theme.hpp"
+#include "../network/protocol.hpp"
 
 
 namespace Molecules {
@@ -13,11 +14,8 @@ namespace Molecules {
         ImTextureID avatarTexture = 0;
     };
 
-    struct Message {
-        std::string author;
-        std::string content;
-        std::string timestamp;
-    };
+    // Use Network::TextMessage instead of duplicating the structure
+    using Message = Network::TextMessage;
 
     struct Friend {
         std::string name;
