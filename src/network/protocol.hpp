@@ -32,6 +32,8 @@ namespace Network {
         LEAVE_CHANNEL,
         CHANNEL_LIST_REQUEST,
         CHANNEL_LIST_RESPONSE,
+        USER_LIST_REQUEST,
+        USER_LIST_RESPONSE,
         
         // Server info
         SERVER_INFO_REQUEST,
@@ -57,6 +59,8 @@ namespace Network {
             case MessageType::LEAVE_CHANNEL: return "LEAVE_CHANNEL";
             case MessageType::CHANNEL_LIST_REQUEST: return "CHANNEL_LIST_REQUEST";
             case MessageType::CHANNEL_LIST_RESPONSE: return "CHANNEL_LIST_RESPONSE";
+            case MessageType::USER_LIST_REQUEST: return "USER_LIST_REQUEST";
+            case MessageType::USER_LIST_RESPONSE: return "USER_LIST_RESPONSE";
             case MessageType::SERVER_INFO_REQUEST: return "SERVER_INFO_REQUEST";
             case MessageType::SERVER_INFO_RESPONSE: return "SERVER_INFO_RESPONSE";
             case MessageType::ERROR: return "ERROR";
@@ -79,6 +83,8 @@ namespace Network {
         if (str == "LEAVE_CHANNEL") return MessageType::LEAVE_CHANNEL;
         if (str == "CHANNEL_LIST_REQUEST") return MessageType::CHANNEL_LIST_REQUEST;
         if (str == "CHANNEL_LIST_RESPONSE") return MessageType::CHANNEL_LIST_RESPONSE;
+        if (str == "USER_LIST_REQUEST") return MessageType::USER_LIST_REQUEST;
+        if (str == "USER_LIST_RESPONSE") return MessageType::USER_LIST_RESPONSE;
         if (str == "SERVER_INFO_REQUEST") return MessageType::SERVER_INFO_REQUEST;
         if (str == "SERVER_INFO_RESPONSE") return MessageType::SERVER_INFO_RESPONSE;
         if (str == "ERROR") return MessageType::ERROR;

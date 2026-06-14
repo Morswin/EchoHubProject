@@ -100,14 +100,15 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                     
                     // Use username from auth or default
                     std::string username = g_AppState.getUsername().empty() ? g_AppState.nickname : g_AppState.getUsername();
+                    g_AppState.setIsConnecting(true);
+                    g_AppState.connectionStartTime = std::chrono::steady_clock::now();
                     bool connected = g_AppState.client->connect(username, "password");
                     
                     if (connected) {
-                        g_AppState.isConnectedToServer = true;
-                        g_AppState.client->requestChannelList();
                         g_AppState.setView(EViewState::CONNECTING_LOADING_VIEW);
                     } else {
                         g_AppState.connectionStatus = "Connection failed";
+                        g_AppState.setIsConnecting(false);
                         g_AppState.setView(EViewState::ERROR_DISCONNECTED_VIEW);
                     }
                 },
@@ -137,14 +138,15 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                         g_AppState.setupNetworkCallbacks();
                         
                         std::string username = g_AppState.getUsername().empty() ? g_AppState.nickname : g_AppState.getUsername();
+                        g_AppState.setIsConnecting(true);
+                        g_AppState.connectionStartTime = std::chrono::steady_clock::now();
                         bool connected = g_AppState.client->connect(username, "password");
                         
                         if (connected) {
-                            g_AppState.isConnectedToServer = true;
-                            g_AppState.client->requestChannelList();
                             g_AppState.setView(EViewState::CONNECTING_LOADING_VIEW);
                         } else {
                             g_AppState.connectionStatus = "Connection failed";
+                            g_AppState.setIsConnecting(false);
                             g_AppState.setView(EViewState::ERROR_DISCONNECTED_VIEW);
                         }
                     }
@@ -155,12 +157,14 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
         case EViewState::SERVER_VIEW:
             Views::ServerView("Mój Serwer C++", g_AppState.getChannels(), g_AppState.getMessages(), g_AppState.getChatInput(), g_AppState.getTheme(),
+                g_AppState.getCurrentChannel(),
+                g_AppState.getCurrentVoiceChannelRef(),
                 g_AppState.getIsVoiceActive(),
+                g_AppState.getUsersInChannel(),
                 [&](const std::string& msg) {
                     // Send message through network client if connected
                     if (g_AppState.client && g_AppState.client->isConnected()) {
-                        std::string channel = "ogólny"; // Default channel
-                        g_AppState.client->sendTextMessage(channel, msg);
+                        g_AppState.client->sendTextMessage(g_AppState.getCurrentChannel(), msg);
                     } else {
                         // Local echo for testing
                         g_AppState.getMessages().push_back({g_AppState.getUsername(), msg, "Teraz"});
@@ -181,9 +185,13 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                     }
                     g_AppState.setView(EViewState::FRIENDS_LIST_VIEW);
                 },
-                [&](const std::string& channel) {
-                    // Join voice channel
-                    g_AppState.toggleVoice(channel);
+                [&](const std::string& channel, bool isTextChannel) {
+                    // Switch channel
+                    g_AppState.switchChannel(channel, isTextChannel);
+                },
+                [&]() {
+                    // Create new channel
+                    g_AppState.setView(EViewState::CREATE_CHANNEL_VIEW);
                 }
             );
             break;
@@ -201,21 +209,34 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             break;
 
         case EViewState::CONNECTING_LOADING_VIEW:
-            Views::ConnectingLoadingView(g_AppState.getTheme());
+            Views::ConnectingLoadingView(g_AppState.getTheme(), g_AppState.connectionStatus);
             // If connected, transition to server view
             if (g_AppState.isConnectedToServer) {
                 g_AppState.setView(EViewState::SERVER_VIEW);
+                g_AppState.setIsConnecting(false);
+            }
+            // Check for connection timeout (5 seconds)
+            else if (g_AppState.getIsConnecting()) {
+                auto now = std::chrono::steady_clock::now();
+                if (now - g_AppState.connectionStartTime > AppState::CONNECTION_TIMEOUT) {
+                    g_AppState.connectionStatus = "Connection timeout: Server not responding";
+                    g_AppState.setIsConnecting(false);
+                    g_AppState.setView(EViewState::ERROR_DISCONNECTED_VIEW);
+                }
             }
             // Fallback: auto-transition after delay if connection status hasn't been updated
             static int counter = 0;
             if (counter++ > 120) { // Po 120 klatkach (ok. 2s)
                 if (g_AppState.client && g_AppState.client->isConnected()) {
                     g_AppState.setView(EViewState::SERVER_VIEW);
+                    g_AppState.setIsConnecting(false);
                 } else if (g_AppState.isServerRunning) {
                     // Server is running, try to connect locally
                     g_AppState.client = std::make_unique<Network::Client>("127.0.0.1", 9987, 9988);
                     g_AppState.setupNetworkCallbacks();
                     std::string username = g_AppState.getUsername().empty() ? g_AppState.nickname : g_AppState.getUsername();
+                    g_AppState.setIsConnecting(true);
+                    g_AppState.connectionStartTime = std::chrono::steady_clock::now();
                     g_AppState.client->connect(username, "password");
                 }
                 counter = 0;
@@ -241,6 +262,16 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                     g_AppState.isConnectedToServer = false;
                     g_AppState.setView(EViewState::LANDING_VIEW);
                 }
+            );
+            break;
+
+        case EViewState::CREATE_CHANNEL_VIEW:
+            Views::CreateChannelView(g_AppState.newChannelName, g_AppState.newChannelIsText, g_AppState.getTheme(),
+                [&](const std::string& name, bool isText) {
+                    g_AppState.createChannel(name, isText);
+                    g_AppState.setView(EViewState::SERVER_VIEW);
+                },
+                [&]() { g_AppState.setView(EViewState::SERVER_VIEW); }
             );
             break;
 

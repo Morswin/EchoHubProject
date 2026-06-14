@@ -111,11 +111,6 @@ namespace Network {
         void leaveChannel();
 
         /**
-         * @brief Request the list of channels from the server.
-         */
-        void requestChannelList();
-
-        /**
          * @brief Set the current voice channel for UDP packets.
          */
         void setVoiceChannel(const std::string& channel);
@@ -159,6 +154,16 @@ namespace Network {
         void setUserListCallback(UserListCallback callback) {
             userListCallback_ = callback;
         }
+
+        /**
+         * @brief Request the list of channels from the server.
+         */
+        void requestChannelList();
+        
+        /**
+         * @brief Request the list of users in the current channel.
+         */
+        void requestUserList();
 
         /**
          * @brief Get the current channel.
@@ -209,6 +214,7 @@ namespace Network {
         void handleVoicePacket(const VoicePacket& voicePkt);
         void handleLoginResponse(const LoginData& loginData);
         void handleChannelListResponse(const MessageData& data);
+        void handleUserListResponse(const MessageData& data);
         void handleUserJoined(const MessageData& data);
         void handleUserLeft(const MessageData& data);
 

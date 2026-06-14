@@ -224,6 +224,35 @@ namespace Network {
                 });
                 break;
             }
+            case MessageType::USER_LIST_REQUEST: {
+                std::string requestedChannel = msg.data.get("channel", client->currentChannel);
+                
+                // Get users in the requested channel
+                std::vector<std::string> users;
+                {
+                    std::lock_guard<std::mutex> lock(channelsMutex_);
+                    auto it = channels_.find(requestedChannel);
+                    if (it != channels_.end()) {
+                        users.assign(it->second.users.begin(), it->second.users.end());
+                    }
+                }
+                
+                // Build message data with user list
+                MessageData data;
+                std::string usersStr;
+                for (const auto& user : users) {
+                    if (!usersStr.empty()) usersStr += ",";
+                    usersStr += user;
+                }
+                data.set("users", usersStr);
+                data.set("channel", requestedChannel);
+                
+                sendMessageToClient(client, Message{
+                    MessageType::USER_LIST_RESPONSE,
+                    data
+                });
+                break;
+            }
             case MessageType::DISCONNECT: {
                 // Handle disconnect
                 std::lock_guard<std::mutex> lock(clientsMutex_);

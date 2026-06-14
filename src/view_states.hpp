@@ -34,6 +34,7 @@ enum class EViewState {
     SERVER_SETTINGS_VIEW,       // Zarządzanie serwerem (role, nazwa)
     ERROR_DISCONNECTED_VIEW,    // Błędy sieciowe i utrata połączenia
     REGISTER_VIEW,
+    CREATE_CHANNEL_VIEW,        // Tworzenie nowego kanału
 };
 
 #endif //ECHOHUBPROJECT_VIEW_STATES_HPP

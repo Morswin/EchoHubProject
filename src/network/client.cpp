@@ -191,6 +191,10 @@ namespace Network {
                 handleChannelListResponse(msg.data);
                 break;
             }
+            case MessageType::USER_LIST_RESPONSE: {
+                handleUserListResponse(msg.data);
+                break;
+            }
             case MessageType::USER_JOINED: {
                 handleUserJoined(msg.data);
                 break;
@@ -295,6 +299,33 @@ namespace Network {
         }
     }
 
+    void Client::handleUserListResponse(const MessageData& data) {
+        if (userListCallback_) {
+            std::vector<std::string> users;
+            std::string usersStr = data.get("users", "");
+            
+            // Parse comma-separated user list
+            size_t start = 0;
+            size_t end = usersStr.find(',');
+            while (end != std::string::npos) {
+                std::string user = usersStr.substr(start, end - start);
+                if (!user.empty()) {
+                    users.push_back(user);
+                }
+                start = end + 1;
+                end = usersStr.find(',', start);
+            }
+            if (start < usersStr.size()) {
+                std::string user = usersStr.substr(start);
+                if (!user.empty()) {
+                    users.push_back(user);
+                }
+            }
+            
+            userListCallback_(users);
+        }
+    }
+
     void Client::sendTextMessage(const std::string& channel, const std::string& content) {
         if (!connected_) return;
 
@@ -359,6 +390,18 @@ namespace Network {
         Message msg;
         msg.type = MessageType::CHANNEL_LIST_REQUEST;
         msg.data = MessageData();
+
+        sendMessage(msg);
+    }
+
+    void Client::requestUserList() {
+        if (!connected_) return;
+
+        Message msg;
+        msg.type = MessageType::USER_LIST_REQUEST;
+        MessageData data;
+        data.set("channel", currentChannel_);
+        msg.data = data;
 
         sendMessage(msg);
     }

@@ -90,11 +90,62 @@ void AppState::onChannelListReceived(const std::vector<Network::ChannelInfo>& ch
 }
 
 void AppState::onUserListReceived(const std::vector<std::string>& users) {
-    // Update friends list or user list
+    // Update users in current channel
+    setUsersInChannel(users);
+    
+    // Also update friends list
     friends.clear();
     for (const auto& user : users) {
         friends.push_back({user, true}); // All users are online when received from server
     }
+}
+
+// --- Channel Controls ---
+
+void AppState::switchChannel(const std::string& channel, bool isTextChannel) {
+    if (!client || !client->isConnected()) {
+        return;
+    }
+    
+    // Leave current voice channel if switching to a different one
+    if (isTextChannel && isVoiceActive && currentVoiceChannel != channel) {
+        stopVoice();
+    }
+    
+    // Set new current channel
+    setCurrentChannel(channel);
+    
+    // Join the channel on the server
+    client->joinChannel(channel);
+    
+    // Request user list for the new channel
+    client->requestUserList();
+    
+    // If it's a voice channel and we're not already in voice, auto-join
+    if (!isTextChannel && !isVoiceActive) {
+        startVoice(channel);
+    }
+    
+    connectionStatus = "Switched to channel: " + channel;
+}
+
+void AppState::createChannel(const std::string& channelName, bool isTextChannel) {
+    if (!server || !server->isRunning()) {
+        connectionStatus = "Error: Server not running";
+        return;
+    }
+    
+    // Add channel to server
+    server->addChannel(channelName, isTextChannel ? "#" : "🔊", isTextChannel);
+    
+    // If this is the server we're connected to, also add to our local channels
+    if (client && client->isConnected()) {
+        // Request updated channel list
+        client->requestChannelList();
+    }
+    
+    connectionStatus = "Created channel: " + channelName;
+    newChannelName.clear();
 }
 
 // --- Voice Controls ---
@@ -110,7 +161,7 @@ void AppState::startVoice(const std::string& channel) {
     }
     
     // Set the voice channel
-    currentVoiceChannel = channel;
+    setCurrentVoiceChannel(channel);
     client->setVoiceChannel(channel);
     
     // Start voice client with callback to send packets via network
@@ -132,14 +183,18 @@ void AppState::stopVoice() {
     
     voiceClient->stop();
     isVoiceActive = false;
-    currentVoiceChannel = "";
+    setCurrentVoiceChannel("");
     connectionStatus = "Voice stopped";
 }
 
 void AppState::toggleVoice(const std::string& channel) {
-    if (isVoiceActive) {
+    if (isVoiceActive && currentVoiceChannel == channel) {
         stopVoice();
+    } else if (!isVoiceActive) {
+        startVoice(channel);
     } else {
+        // Switch voice channel
+        stopVoice();
         startVoice(channel);
     }
 }

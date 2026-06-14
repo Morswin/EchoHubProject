@@ -233,12 +233,16 @@ namespace Views {
         const std::vector<Molecules::Message>& messages,
         std::string& chatInput,
         const Theme& theme,
+        const std::string& currentChannel,
+        const std::string& currentVoiceChannel,
         bool isVoiceActive,
+        const std::vector<std::string>& usersInChannel,
         const std::function<void(const std::string&)>& onSendMessage = {},
         const std::function<void()>& onCreateServer = {},
         const std::function<void(const std::string&)>& onConnectToServer = {},
         const std::function<void()>& onDirectMessage = {},
-        const std::function<void(const std::string&)>& onJoinVoiceChannel = {}
+        const std::function<void(const std::string&, bool)>& onSwitchChannel = {},
+        const std::function<void()>& onCreateChannel = {}
     ) {
         ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
         ImGui::SetNextWindowPos({0, 0});
@@ -257,14 +261,23 @@ namespace Views {
 
         // 2. SubSidebar (kanały)
         ImGui::BeginChild("SubSidebar", {240, -1}, true);
+        ImGui::BeginGroup();
         Atoms::Text(serverName, theme, 0);
+        ImGui::SameLine();
+        if (Atoms::Button("+", theme, {20, 20}, onCreateChannel)) {}
+        ImGui::EndGroup();
         ImGui::Spacing();
 
         // Kanały tekstowe
         Atoms::Text("Kanały tekstowe", theme, 1);
         for (const auto& channel : channels) {
             if (channel.isTextChannel) {
-                Molecules::ChannelListItem(channel.name, channel.icon, false, theme);
+                bool isActive = (currentChannel == channel.name);
+                Molecules::ChannelListItem(channel.name, channel.icon, isActive, theme,
+                    [&, channelName = channel.name]() {
+                        if (onSwitchChannel) onSwitchChannel(channelName, true);
+                    }
+                );
             }
         }
         ImGui::Spacing();
@@ -274,10 +287,10 @@ namespace Views {
         for (const auto& channel : channels) {
             if (!channel.isTextChannel) {
                 // Check if this is the current voice channel
-                bool isActiveVoice = isVoiceActive;
+                bool isActiveVoice = (currentVoiceChannel == channel.name);
                 Molecules::ChannelListItem(channel.name, channel.icon, isActiveVoice, theme, 
                     [&, channelName = channel.name]() {
-                        if (onJoinVoiceChannel) onJoinVoiceChannel(channelName);
+                        if (onSwitchChannel) onSwitchChannel(channelName, false);
                     }
                 );
             }
@@ -287,9 +300,9 @@ namespace Views {
 
         // 3. MainContent (czat)
         ImGui::BeginChild("MainContent");
-        // Nagłówek z indykatorem voice
+        // Nagłówek z indykatorem voice i nazwą kanału
         ImGui::BeginGroup();
-        Atoms::Text("# ogólny", theme, 0);
+        Atoms::Text("# " + currentChannel, theme, 0);
         ImGui::SameLine();
         if (isVoiceActive) {
             ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 255, 0, 255));
@@ -312,6 +325,22 @@ namespace Views {
         ImGui::SameLine();
         if (Atoms::Button("Wyślij", theme, {0, 0}, [&]() { if (!chatInput.empty() && onSendMessage) onSendMessage(chatInput); chatInput.clear(); })) {}
 
+        ImGui::EndChild();
+        ImGui::SameLine();
+
+        // 4. UserPanel (użytkownicy w kanale)
+        ImGui::BeginChild("UserPanel", {200, -1}, true);
+        Atoms::Text("Użytkownicy", theme, 0);
+        ImGui::Spacing();
+        
+        if (usersInChannel.empty()) {
+            Atoms::Text("Brak użytkowników", theme, 1);
+        } else {
+            for (const auto& user : usersInChannel) {
+                Molecules::FriendRow({user, true}, theme);
+                ImGui::Spacing();
+            }
+        }
         ImGui::EndChild();
 
         ImGui::End();
@@ -428,7 +457,7 @@ namespace Views {
         ImGui::End();
     }
 
-    inline void ConnectingLoadingView(const Theme& theme) {
+    inline void ConnectingLoadingView(const Theme& theme, const std::string& status = "") {
         ImGui::SetNextWindowSize({400, 200});
         ImGui::SetNextWindowPos(
             ImVec2(
@@ -448,7 +477,12 @@ namespace Views {
         ImGui::SameLine();
         Atoms::Text("Nawiązywanie połączenia...", theme, 0);
         ImGui::Spacing();
-        Atoms::Text("Trwa handshake protokołu UDP...", theme, 1);
+        
+        if (!status.empty()) {
+            Atoms::Text(status.c_str(), theme, 1);
+        } else {
+            Atoms::Text("Trwa handshake protokołu UDP...", theme, 1);
+        }
 
         ImGui::End();
     }
@@ -474,6 +508,52 @@ namespace Views {
         ImGui::Spacing();
         if (Atoms::Button("Wróć do menu głównego", theme, {200, 40}, onBackToMain)) {}
 
+        ImGui::End();
+    }
+
+    inline void CreateChannelView(
+        std::string& channelName,
+        bool& isTextChannel,
+        const Theme& theme,
+        const std::function<void(const std::string&, bool)>& onCreate = {},
+        const std::function<void()>& onCancel = {}
+    ) {
+        ImGui::SetNextWindowSize({400, 250});
+        ImGui::SetNextWindowPos(
+            ImVec2(
+                (ImGui::GetIO().DisplaySize.x - 400) * 0.5f,
+                (ImGui::GetIO().DisplaySize.y - 250) * 0.5f
+            ),
+            ImGuiCond_Appearing
+        );
+        ImGui::Begin("Utwórz nowy kanał", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+        
+        Atoms::Text("Utwórz nowy kanał", theme, 0);
+        ImGui::Spacing();
+        
+        Atoms::InputText("Nazwa kanału", channelName, theme, {200, 0}, "np. pomoc-techniczna");
+        ImGui::Spacing();
+        
+        // Radio buttons for channel type
+        if (ImGui::RadioButton("Kanał tekstowy", isTextChannel)) {
+            isTextChannel = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Kanał głosowy", !isTextChannel)) {
+            isTextChannel = false;
+        }
+        ImGui::Spacing();
+        
+        ImGui::BeginGroup();
+        if (Atoms::Button("Utwórz", theme, {150, 40}, [&]() {
+            if (!channelName.empty() && onCreate) {
+                onCreate(channelName, isTextChannel);
+            }
+        })) {}
+        ImGui::SameLine();
+        if (Atoms::Button("Anuluj", theme, {150, 40}, onCancel)) {}
+        ImGui::EndGroup();
+        
         ImGui::End();
     }
 

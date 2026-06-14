@@ -34,6 +34,10 @@ public:
     std::string region;
     std::string selectedMic = "Default Microphone Input";
     std::string verificationLevel = "Brak (Dowolny użytkownik może wejść)";
+    
+    // --- Channel Creation ---
+    std::string newChannelName;
+    bool newChannelIsText = true;
 
     // --- Chat Data ---
     std::string chatInput;
@@ -51,6 +55,9 @@ public:
         {"Admin", "Cześć! Witamy na klonie Discorda napisanym w C++.", "Dzisiaj o 12:00"},
         {"User_C++", "Wygląda super, czat tekstowy i enumy działają stabilnie!", "Dzisiaj o 12:05"}
     };
+    
+    // --- Channel Users ---
+    std::vector<std::string> usersInChannel;
 
     // --- Theme ---
     Theme theme = Theme::createGoldGalaxyTheme();
@@ -62,8 +69,14 @@ public:
     bool isServerRunning = false;
     bool isConnectedToServer = false;
     bool isVoiceActive = false;
+    bool isConnecting = false;
     std::string connectionStatus = "";
+    std::string currentChannel = "ogólny"; // Current text channel
     std::string currentVoiceChannel = "";
+    
+    // --- Connection Timeout ---
+    std::chrono::steady_clock::time_point connectionStartTime;
+    static constexpr std::chrono::seconds CONNECTION_TIMEOUT = std::chrono::seconds(5);
 
     // --- Network Callbacks ---
     void setupNetworkCallbacks();
@@ -72,6 +85,10 @@ public:
     void onConnectionStatusChanged(bool connected, const std::string& message);
     void onChannelListReceived(const std::vector<Network::ChannelInfo>& channels);
     void onUserListReceived(const std::vector<std::string>& users);
+    
+    // --- Channel Controls ---
+    void switchChannel(const std::string& channel, bool isTextChannel);
+    void createChannel(const std::string& channelName, bool isTextChannel);
     
     // --- Voice Controls ---
     void startVoice(const std::string& channel);
@@ -105,6 +122,17 @@ public:
     
     [[nodiscard]] bool getIsVoiceActive() const { return isVoiceActive; }
     [[nodiscard]] const std::string& getCurrentVoiceChannel() const { return currentVoiceChannel; }
+    [[nodiscard]] const std::string& getCurrentChannel() const { return currentChannel; }
+    [[nodiscard]] const std::string& getCurrentVoiceChannelRef() const { return currentVoiceChannel; }
+    
+    void setCurrentChannel(const std::string& channel) { currentChannel = channel; }
+    void setCurrentVoiceChannel(const std::string& channel) { currentVoiceChannel = channel; }
+    
+    [[nodiscard]] const std::vector<std::string>& getUsersInChannel() const { return usersInChannel; }
+    void setUsersInChannel(const std::vector<std::string>& users) { usersInChannel = users; }
+    
+    [[nodiscard]] bool getIsConnecting() const { return isConnecting; }
+    void setIsConnecting(bool connecting) { isConnecting = connecting; }
 };
 
 #endif //ECHOHUBPROJECT_APP_STATE_HPP
