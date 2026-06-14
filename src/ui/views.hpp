@@ -59,15 +59,15 @@ namespace Views {
         Atoms::InputText("Nazwa użytkownika", username, theme, {200, 0}, "Wprowadź swoją nazwę");
         ImGui::Spacing();
 
+        // Login button is disabled if username is empty
+        bool canLogin = !username.empty();
         if (Atoms::Button("Zaloguj się", theme, {200, 40}, [&]() {
-            if (!username.empty()) {
-                if (selectedUserIndex >= 0) {
-                    username = users[selectedUserIndex];
-                }
-                UserManager::setCurrentUser(username);
-                if (onLogin) onLogin();
+            if (selectedUserIndex >= 0) {
+                username = users[selectedUserIndex];
             }
-        })) {}
+            UserManager::setCurrentUser(username);
+            if (onLogin) onLogin();
+        }, !canLogin)) {}
 
         ImGui::Spacing();
         if (Atoms::Button("Zarejestruj nowego użytkownika", theme, {200, 40}, onRegister)) {}
@@ -138,6 +138,10 @@ namespace Views {
             Molecules::FriendRow(friendData, theme);
             ImGui::Spacing();
         }
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        if (Atoms::Button("Dołącz do istniejącego serwera", theme, {200, 40}, [&]() { if (onConnectToServer) onConnectToServer(""); })) {}
         ImGui::EndChild();
 
         ImGui::End();
@@ -256,6 +260,10 @@ namespace Views {
         });
         Molecules::ServerIcon(serverName.substr(0, 2), theme, true);
         Molecules::ServerIcon("+", theme, false, onCreateServer);
+        // Add button to connect to existing server
+        if (Atoms::IconButton("🔗", theme, {48, 48}, [&]() {
+            if (onConnectToServer) onConnectToServer("");
+        })) {}
         ImGui::EndChild();
         ImGui::SameLine();
 

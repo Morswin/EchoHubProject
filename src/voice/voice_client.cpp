@@ -130,6 +130,9 @@ void VoiceClient::shutdown() {
         decoder = nullptr;
     }
     
+    // Quit SDL Audio subsystem
+    // Note: We only quit if we were the ones who initialized it
+    // But for now, we'll always quit to be safe
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 

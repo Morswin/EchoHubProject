@@ -84,7 +84,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                 [&](const std::string& serverId) {
                     g_AppState.setView(EViewState::SERVER_VIEW);
                 },
-                [&]() { g_AppState.setView(EViewState::FRIENDS_LIST_VIEW); }
+                [&]() { g_AppState.setView(EViewState::CONNECT_TO_NEW_SERVER_VIEW); }
             );
             break;
 
@@ -172,7 +172,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                     g_AppState.getChatInput().clear();
                 },
                 [&]() { g_AppState.setView(EViewState::CREATE_NEW_SERVER_VIEW); },
-                [&](const std::string& serverId) { g_AppState.setView(EViewState::SERVER_VIEW); },
+                [&](const std::string& serverId) { 
+                    // Connect to existing server
+                    g_AppState.setView(EViewState::CONNECT_TO_NEW_SERVER_VIEW); 
+                },
                 [&]() { 
                     // Disconnect from server
                     if (g_AppState.client && g_AppState.client->isConnected()) {

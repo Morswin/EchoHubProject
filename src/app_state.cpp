@@ -187,6 +187,8 @@ void AppState::stopVoice() {
     }
     
     voiceClient->stop();
+    // Don't call shutdown here - we want to keep the voice client initialized
+    // for quick restart. Just stop the voice thread.
     isVoiceActive = false;
     setCurrentVoiceChannel("");
     connectionStatus = "Voice stopped";

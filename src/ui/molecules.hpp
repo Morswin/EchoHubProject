@@ -44,7 +44,10 @@ namespace Molecules {
         ImGui::EndGroup();
 
         ImGui::SameLine();
+        // Use unique ID for each button to avoid ImGui ID conflicts
+        ImGui::PushID(user.name.c_str());
         Atoms::Button("Czat", theme, {0, 20}, onClick);
+        ImGui::PopID();
         ImGui::EndGroup();
     }
 
@@ -118,7 +121,10 @@ namespace Molecules {
         Atoms::Text(friendData.isOnline ? "● Online" : "● Niedostępny",
                    theme, friendData.isOnline ? 3 : 2); // 3 = online, 2 = textSecondary
         ImGui::SameLine();
+        // Use unique ID for each button to avoid ImGui ID conflicts
+        ImGui::PushID(friendData.name.c_str());
         Atoms::Button("Czat", theme, {0, 20}, onMessageClick);
+        ImGui::PopID();
         ImGui::EndGroup();
     }
 }
