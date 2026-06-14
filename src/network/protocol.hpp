@@ -268,6 +268,7 @@ namespace Network {
     struct LoginData {
         std::string username;
         std::string password;
+        uint16_t udpPort = 0; // Client's UDP port for voice
         bool success = false;
         std::string errorMessage;
         
@@ -276,6 +277,9 @@ namespace Network {
             MessageData data;
             data.set("username", username);
             data.set("password", password);
+            if (udpPort > 0) {
+                data.set("udp_port", std::to_string(udpPort));
+            }
             data.set("success", success ? "true" : "false");
             data.set("error", errorMessage);
             return data;
@@ -286,6 +290,7 @@ namespace Network {
             LoginData login;
             login.username = data.get("username", "");
             login.password = data.get("password", "");
+            login.udpPort = static_cast<uint16_t>(std::stoi(data.get("udp_port", "0")));
             login.success = (data.get("success", "") == "true");
             login.errorMessage = data.get("error", "");
             return login;

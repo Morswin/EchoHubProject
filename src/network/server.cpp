@@ -124,7 +124,7 @@ namespace Network {
     }
 
     void Server::handleUdpPackets() {
-        auto buffer = std::make_shared<std::vector<uint8_t>>(1500); // Max UDP packet size
+        auto buffer = std::make_shared<std::vector<uint8_t>>(2048); // Max UDP packet size
         udp::endpoint senderEndpoint;
         
         udpSocket_->async_receive_from(
@@ -135,10 +135,32 @@ namespace Network {
                     // Resize the buffer to actual received size
                     buffer->resize(bytesReceived);
                     
-                    // For now, just store the packet
-                    // In a real implementation, we'd parse it and forward to the appropriate channel
-                    incomingVoicePackets_.push({senderEndpoint, *buffer});
-                } else if (ec) {
+                    // Check if we have at least 4 bytes (packet size header)
+                    if (bytesReceived >= 4) {
+                        uint32_t packetSize;
+                        std::memcpy(&packetSize, buffer->data(), 4);
+                        
+                        if (bytesReceived >= 4 + packetSize) {
+                            // Extract voice data
+                            std::vector<uint8_t> voiceData(buffer->begin() + 4, buffer->begin() + 4 + packetSize);
+                            
+                            // Find the client by UDP endpoint and forward the packet
+                            std::lock_guard<std::mutex> lock(clientsMutex_);
+                            for (auto& pair : tcpClients_) {
+                                auto client = pair.second;
+                                if (client->udpEndpoint == senderEndpoint) {
+                                    // Forward to all clients in the same channel
+                                    VoicePacket pkt;
+                                    pkt.channel = client->currentChannel;
+                                    pkt.sender = client->username;
+                                    pkt.audioData = voiceData;
+                                    broadcastVoicePacket(pkt, client->currentChannel);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } else if (ec != asio::error::operation_aborted) {
                     std::cerr << "UDP receive error: " << ec.message() << std::endl;
                 }
                 
@@ -243,6 +265,12 @@ namespace Network {
             // Login successful
             client->username = loginData.username;
             client->currentChannel = "ogólny"; // Default channel
+            
+            // Set UDP endpoint if port was provided
+            if (loginData.udpPort > 0) {
+                asio::ip::address tcpAddress = client->tcpSocket.remote_endpoint().address();
+                client->udpEndpoint = udp::endpoint(tcpAddress, loginData.udpPort);
+            }
             
             std::lock_guard<std::mutex> lock(clientsMutex_);
             tcpClients_[&client->tcpSocket] = client;
@@ -359,15 +387,19 @@ namespace Network {
                 continue;
             }
             
-            // In a real implementation, we'd send the voice packet via UDP
-            // For now, we'll just broadcast it via TCP (for simplicity)
-            Message msg;
-            msg.type = MessageType::VOICE_PACKET;
-            msg.data = pkt.toMessageData();
-            
+            // Send via UDP for better performance
             try {
-                std::string msgStr = msg.serialize() + "\n";
-                asio::write(client->tcpSocket, asio::buffer(msgStr));
+                // Format: first 4 bytes = packet size, then the actual data
+                std::vector<uint8_t> packet;
+                uint32_t size = static_cast<uint32_t>(pkt.audioData.size());
+                packet.resize(4 + pkt.audioData.size());
+                std::memcpy(packet.data(), &size, 4);
+                std::memcpy(packet.data() + 4, pkt.audioData.data(), pkt.audioData.size());
+                
+                // Send to the client's UDP endpoint
+                if (client->udpEndpoint.address().to_string() != "0.0.0.0") {
+                    udpSocket_->send_to(asio::buffer(packet), client->udpEndpoint);
+                }
             } catch (const std::exception& e) {
                 std::cerr << "Error sending voice packet to client: " << e.what() << std::endl;
             }

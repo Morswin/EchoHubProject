@@ -61,7 +61,9 @@ public:
     std::unique_ptr<VoiceClient> voiceClient;
     bool isServerRunning = false;
     bool isConnectedToServer = false;
+    bool isVoiceActive = false;
     std::string connectionStatus = "";
+    std::string currentVoiceChannel = "";
 
     // --- Network Callbacks ---
     void setupNetworkCallbacks();
@@ -70,6 +72,11 @@ public:
     void onConnectionStatusChanged(bool connected, const std::string& message);
     void onChannelListReceived(const std::vector<Network::ChannelInfo>& channels);
     void onUserListReceived(const std::vector<std::string>& users);
+    
+    // --- Voice Controls ---
+    void startVoice(const std::string& channel);
+    void stopVoice();
+    void toggleVoice(const std::string& channel);
 
     // --- Gettery/Settery ---
     [[nodiscard]] EViewState getCurrentView() const { return currentView; }
@@ -95,6 +102,9 @@ public:
 
     [[nodiscard]] EViewState getView() const { return currentView; }
     void setView(EViewState view) { currentView = view; }
+    
+    [[nodiscard]] bool getIsVoiceActive() const { return isVoiceActive; }
+    [[nodiscard]] const std::string& getCurrentVoiceChannel() const { return currentVoiceChannel; }
 };
 
 #endif //ECHOHUBPROJECT_APP_STATE_HPP

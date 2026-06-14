@@ -1,11 +1,13 @@
 #include "voice_client.hpp"
 #include <iostream>
+#include <chrono>
 
 VoiceClient::VoiceClient() : pcmBuffer(FRAME_SIZE) {
     // Initialization is done in initialize() to allow error handling
 }
 
 VoiceClient::~VoiceClient() {
+    stop();
     shutdown();
 }
 
@@ -127,4 +129,74 @@ void VoiceClient::decodeAndPlay(const std::vector<uint8_t>& inEncodedPacket) {
         // Push the recovered raw audio directly to the speaker
         SDL_PutAudioStreamData(speakerStream, decodedPcm.data(), decodedSamples * sizeof(float));
     }
+}
+
+bool VoiceClient::start(VoicePacketCallback onVoicePacket) {
+    if (running_) {
+        std::cerr << "Voice client is already running!" << std::endl;
+        return false;
+    }
+
+    if (!isInitialized()) {
+        if (!initialize()) {
+            std::cerr << "Failed to initialize voice client!" << std::endl;
+            return false;
+        }
+    }
+
+    onVoicePacketCallback_ = onVoicePacket;
+    shouldStop_ = false;
+    running_ = true;
+    
+    voiceThread_ = std::thread(&VoiceClient::voiceThreadFunction, this);
+    
+    std::cout << "Voice client started in thread " << voiceThread_.get_id() << std::endl;
+    return true;
+}
+
+void VoiceClient::stop() {
+    if (!running_) return;
+
+    shouldStop_ = true;
+    running_ = false;
+    
+    if (voiceThread_.joinable()) {
+        voiceThread_.join();
+    }
+    
+    std::cout << "Voice client stopped" << std::endl;
+}
+
+void VoiceClient::queueVoicePacket(const std::vector<uint8_t>& packet) {
+    if (isInitialized() && running_) {
+        incomingVoicePackets_.push(packet);
+    }
+}
+
+void VoiceClient::voiceThreadFunction() {
+    std::cout << "Voice thread started" << std::endl;
+    
+    while (!shouldStop_) {
+        // 1. Process incoming voice packets (playback)
+        std::vector<uint8_t> incomingPacket;
+        if (incomingVoicePackets_.tryPop(incomingPacket)) {
+            decodeAndPlay(incomingPacket);
+        }
+        
+        // 2. Record and encode audio (capture)
+        std::vector<uint8_t> encodedPacket;
+        if (recordAndEncode(encodedPacket)) {
+            // Send the packet via callback
+            if (onVoicePacketCallback_) {
+                onVoicePacketCallback_(encodedPacket);
+            }
+            // Also queue for outgoing (if needed for local playback testing)
+            outgoingVoicePackets_.push(encodedPacket);
+        }
+        
+        // 3. Small sleep to prevent CPU overload
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    
+    std::cout << "Voice thread exiting" << std::endl;
 }

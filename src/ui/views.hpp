@@ -55,8 +55,8 @@ namespace Views {
             ImGui::EndCombo();
         }
 
-        // ImGui::Spacing();
-        // Atoms::InputText("Nazwa użytkownika", username, theme, {200, 0}, "Wprowadź swoją nazwę");
+        ImGui::Spacing();
+        Atoms::InputText("Nazwa użytkownika", username, theme, {200, 0}, "Wprowadź swoją nazwę");
         ImGui::Spacing();
 
         if (Atoms::Button("Zaloguj się", theme, {200, 40}, [&]() {
@@ -233,10 +233,12 @@ namespace Views {
         const std::vector<Molecules::Message>& messages,
         std::string& chatInput,
         const Theme& theme,
+        bool isVoiceActive,
         const std::function<void(const std::string&)>& onSendMessage = {},
         const std::function<void()>& onCreateServer = {},
         const std::function<void(const std::string&)>& onConnectToServer = {},
-        const std::function<void()>& onDirectMessage = {}
+        const std::function<void()>& onDirectMessage = {},
+        const std::function<void(const std::string&)>& onJoinVoiceChannel = {}
     ) {
         ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
         ImGui::SetNextWindowPos({0, 0});
@@ -271,7 +273,13 @@ namespace Views {
         Atoms::Text("Kanały głosowe", theme, 1);
         for (const auto& channel : channels) {
             if (!channel.isTextChannel) {
-                Molecules::ChannelListItem(channel.name, channel.icon, false, theme);
+                // Check if this is the current voice channel
+                bool isActiveVoice = isVoiceActive;
+                Molecules::ChannelListItem(channel.name, channel.icon, isActiveVoice, theme, 
+                    [&, channelName = channel.name]() {
+                        if (onJoinVoiceChannel) onJoinVoiceChannel(channelName);
+                    }
+                );
             }
         }
         ImGui::EndChild();
@@ -279,8 +287,18 @@ namespace Views {
 
         // 3. MainContent (czat)
         ImGui::BeginChild("MainContent");
-        // Nagłówek
+        // Nagłówek z indykatorem voice
+        ImGui::BeginGroup();
         Atoms::Text("# ogólny", theme, 0);
+        ImGui::SameLine();
+        if (isVoiceActive) {
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 255, 0, 255));
+            Atoms::Text("🎤", theme, 0);
+            ImGui::PopStyleColor();
+            ImGui::SameLine();
+            Atoms::Text("Aktywny", theme, 2);
+        }
+        ImGui::EndGroup();
         Atoms::Separator(theme);
         ImGui::Spacing();
 

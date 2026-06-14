@@ -94,6 +94,12 @@ namespace Network {
         void sendVoicePacket(const std::string& channel, const std::vector<uint8_t>& audioData);
 
         /**
+         * @brief Send a raw voice packet via UDP (for use with VoiceClient callback).
+         * @param audioData Encoded Opus audio data.
+         */
+        void sendVoicePacketUdp(const std::vector<uint8_t>& audioData);
+
+        /**
          * @brief Join a channel.
          * @param channelName Name of the channel to join.
          */
@@ -108,6 +114,16 @@ namespace Network {
          * @brief Request the list of channels from the server.
          */
         void requestChannelList();
+
+        /**
+         * @brief Set the current voice channel for UDP packets.
+         */
+        void setVoiceChannel(const std::string& channel);
+
+        /**
+         * @brief Get the server's UDP endpoint for voice packets.
+         */
+        udp::endpoint getVoiceEndpoint() const { return voiceEndpoint_; }
 
         /**
          * @brief Set callback for incoming text messages.
@@ -161,13 +177,16 @@ namespace Network {
         uint16_t voicePort_;
         std::string username_;
         std::string currentChannel_ = "ogólny"; // Default channel
+        std::string voiceChannel_ = "ogólny"; // Default voice channel
         std::atomic<bool> connected_{false};
 
         // --- Network Resources ---
         asio::io_context ioContext_;
         std::unique_ptr<tcp::socket> tcpSocket_;
         std::unique_ptr<udp::socket> udpSocket_;
+        udp::endpoint voiceEndpoint_;
         std::thread clientThread_;
+        std::thread udpThread_;
 
         // --- Callbacks ---
         TextMessageCallback textMessageCallback_;
@@ -196,6 +215,11 @@ namespace Network {
         // --- Helper Methods ---
         void sendMessage(const Message& msg);
         void sendUdpPacket(const std::vector<uint8_t>& data, const udp::endpoint& endpoint);
+        
+        // --- UDP Voice Methods ---
+        void startUdpListener();
+        void handleUdpPacket(const std::vector<uint8_t>& data, const udp::endpoint& endpoint);
+        void udpListenLoop();
     };
 }
 

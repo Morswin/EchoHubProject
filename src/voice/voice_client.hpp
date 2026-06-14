@@ -6,6 +6,13 @@
 #include <vector>
 #include <string>
 #include <cstdint>
+#include <thread>
+#include <atomic>
+#include <mutex>
+#include <functional>
+#include <queue>
+
+#include "../utils/thread_safe_queue.hpp"
 
 /**
  * @brief Client for voice capture and playback using Opus codec and SDL3 audio.
@@ -20,6 +27,9 @@ public:
     static constexpr int CHANNELS = 1;             // Mono
     static constexpr int FRAME_SIZE = 960;         // 20ms of audio at 48kHz (48000 * 0.02)
     static constexpr int BYTES_PER_FRAME = FRAME_SIZE * sizeof(float);
+
+    // --- Callback for sending voice packets ---
+    using VoicePacketCallback = std::function<void(const std::vector<uint8_t>&)>;
 
     VoiceClient();
     ~VoiceClient();
@@ -36,6 +46,34 @@ public:
     void shutdown();
 
     /**
+     * @brief Start voice capture and playback in a separate thread.
+     * @param onVoicePacket Callback to send encoded voice packets.
+     * @return true if voice client started successfully.
+     */
+    bool start(VoicePacketCallback onVoicePacket = nullptr);
+
+    /**
+     * @brief Stop voice capture and playback.
+     */
+    void stop();
+
+    /**
+     * @brief Check if the voice client is running.
+     */
+    bool isRunning() const { return running_; }
+
+    /**
+     * @brief Check if the voice client is initialized and ready.
+     */
+    bool isInitialized() const { return micStream != nullptr && speakerStream != nullptr && encoder != nullptr && decoder != nullptr; }
+
+    /**
+     * @brief Queue a voice packet for playback.
+     * @param packet Encoded Opus voice packet.
+     */
+    void queueVoicePacket(const std::vector<uint8_t>& packet);
+
+    /**
      * @brief Record audio from microphone and encode it using Opus.
      * @param outEncodedPacket Vector to store the encoded audio packet.
      * @return true if a full frame was recorded and encoded, false otherwise.
@@ -48,11 +86,6 @@ public:
      */
     void decodeAndPlay(const std::vector<uint8_t>& inEncodedPacket);
 
-    /**
-     * @brief Check if the voice client is initialized and ready.
-     */
-    bool isInitialized() const { return micStream != nullptr && speakerStream != nullptr && encoder != nullptr && decoder != nullptr; }
-
 private:
     // --- SDL3 Audio Resources ---
     SDL_AudioStream* micStream = nullptr;
@@ -62,8 +95,23 @@ private:
     OpusEncoder* encoder = nullptr;
     OpusDecoder* decoder = nullptr;
 
+    // --- Thread Management ---
+    std::thread voiceThread_;
+    std::atomic<bool> running_{false};
+    std::atomic<bool> shouldStop_{false};
+
+    // --- Callbacks ---
+    VoicePacketCallback onVoicePacketCallback_;
+
+    // --- Audio Queues ---
+    ThreadSafeQueue<std::vector<uint8_t>> incomingVoicePackets_;
+    ThreadSafeQueue<std::vector<uint8_t>> outgoingVoicePackets_;
+
     // --- Working Buffers ---
     std::vector<float> pcmBuffer;
+
+    // --- Thread Functions ---
+    void voiceThreadFunction();
 };
 
 #endif // ECHOHUB_VOICE_CLIENT_HPP

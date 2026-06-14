@@ -27,15 +27,33 @@ namespace Network {
         try {
             // Resolve server address
             tcp::resolver resolver(ioContext_);
-            auto endpoints = resolver.resolve(serverAddress_, std::to_string(serverPort_));
+            auto tcpEndpoints = resolver.resolve(serverAddress_, std::to_string(serverPort_));
             
-            // Connect to server
-            asio::connect(*tcpSocket_, endpoints);
+            // Connect to server via TCP
+            asio::connect(*tcpSocket_, tcpEndpoints);
             
-            // Send login request
+            // Set up UDP endpoint for voice
+            udp::resolver udpResolver(ioContext_);
+            auto udpEndpoints = udpResolver.resolve(serverAddress_, std::to_string(voicePort_));
+            if (!udpEndpoints.empty()) {
+                voiceEndpoint_ = *udpEndpoints.begin();
+            } else {
+                // Fallback: create endpoint manually
+                voiceEndpoint_ = udp::endpoint(asio::ip::make_address(serverAddress_), voicePort_);
+            }
+            
+            // Open UDP socket and bind to a local port
+            udpSocket_->open(udp::v4());
+            udpSocket_->bind(udp::endpoint(udp::v4(), 0)); // Let OS choose a local port
+            
+            // Get the local UDP port that was assigned
+            uint16_t localUdpPort = udpSocket_->local_endpoint().port();
+            
+            // Send login request with UDP port
             LoginData loginData;
             loginData.username = username;
             loginData.password = password;
+            loginData.udpPort = localUdpPort;
             
             Message loginMsg;
             loginMsg.type = MessageType::LOGIN_REQUEST;
@@ -46,6 +64,9 @@ namespace Network {
             // Start the client thread
             connected_ = true;
             clientThread_ = std::thread(&Client::run, this);
+            
+            // Start UDP listener thread
+            startUdpListener();
             
             if (connectionCallback_) {
                 connectionCallback_(true, "Connected to server");
@@ -89,6 +110,11 @@ namespace Network {
         // Join the client thread
         if (clientThread_.joinable()) {
             clientThread_.join();
+        }
+        
+        // Join the UDP thread
+        if (udpThread_.joinable()) {
+            udpThread_.join();
         }
         
         if (connectionCallback_) {
@@ -352,5 +378,87 @@ namespace Network {
         } catch (const std::exception& e) {
             std::cerr << "Error sending UDP packet: " << e.what() << std::endl;
         }
+    }
+
+    void Client::sendVoicePacketUdp(const std::vector<uint8_t>& audioData) {
+        if (!connected_ || voiceEndpoint_.address().to_string().empty()) {
+            return;
+        }
+        
+        try {
+            // Send voice packet directly via UDP
+            // Format: first 4 bytes = packet size, then the actual data
+            std::vector<uint8_t> packet;
+            uint32_t size = static_cast<uint32_t>(audioData.size());
+            packet.resize(4 + audioData.size());
+            std::memcpy(packet.data(), &size, 4);
+            std::memcpy(packet.data() + 4, audioData.data(), audioData.size());
+            
+            udpSocket_->send_to(asio::buffer(packet), voiceEndpoint_);
+        } catch (const std::exception& e) {
+            std::cerr << "Error sending voice packet: " << e.what() << std::endl;
+        }
+    }
+
+    void Client::setVoiceChannel(const std::string& channel) {
+        voiceChannel_ = channel;
+    }
+
+    void Client::startUdpListener() {
+        if (udpThread_.joinable()) {
+            return; // Already running
+        }
+        
+        udpThread_ = std::thread(&Client::udpListenLoop, this);
+    }
+
+    void Client::udpListenLoop() {
+        try {
+            std::vector<uint8_t> buffer(2048); // Max UDP packet size
+            udp::endpoint remoteEndpoint;
+            
+            while (connected_) {
+                size_t bytesRead = udpSocket_->receive_from(
+                    asio::buffer(buffer), 
+                    remoteEndpoint,
+                    asio::socket_base::message_peek
+                );
+                
+                if (bytesRead > 0) {
+                    // Read the full packet
+                    size_t fullBytesRead = udpSocket_->receive_from(
+                        asio::buffer(buffer), 
+                        remoteEndpoint
+                    );
+                    
+                    if (fullBytesRead >= 4) {
+                        // Extract packet size from first 4 bytes
+                        uint32_t packetSize;
+                        std::memcpy(&packetSize, buffer.data(), 4);
+                        
+                        if (fullBytesRead >= 4 + packetSize) {
+                            std::vector<uint8_t> voiceData(buffer.begin() + 4, buffer.begin() + 4 + packetSize);
+                            handleUdpPacket(voiceData, remoteEndpoint);
+                        }
+                    }
+                }
+                
+                // Small sleep to prevent CPU overload
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "UDP listener error: " << e.what() << std::endl;
+        }
+    }
+
+    void Client::handleUdpPacket(const std::vector<uint8_t>& data, const udp::endpoint& endpoint) {
+        if (!voicePacketCallback_) return;
+        
+        VoicePacket pkt;
+        pkt.channel = voiceChannel_;
+        pkt.sender = username_;
+        pkt.audioData = data;
+        
+        voicePacketCallback_(pkt);
     }
 }

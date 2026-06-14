@@ -96,3 +96,50 @@ void AppState::onUserListReceived(const std::vector<std::string>& users) {
         friends.push_back({user, true}); // All users are online when received from server
     }
 }
+
+// --- Voice Controls ---
+
+void AppState::startVoice(const std::string& channel) {
+    if (isVoiceActive || !client || !client->isConnected()) {
+        return;
+    }
+    
+    // Initialize voice client if not already done
+    if (!voiceClient) {
+        voiceClient = std::make_unique<VoiceClient>();
+    }
+    
+    // Set the voice channel
+    currentVoiceChannel = channel;
+    client->setVoiceChannel(channel);
+    
+    // Start voice client with callback to send packets via network
+    isVoiceActive = voiceClient->start([this](const std::vector<uint8_t>& packet) {
+        if (client && client->isConnected()) {
+            client->sendVoicePacketUdp(packet);
+        }
+    });
+    
+    if (isVoiceActive) {
+        connectionStatus = "Voice active in channel: " + channel;
+    }
+}
+
+void AppState::stopVoice() {
+    if (!isVoiceActive || !voiceClient) {
+        return;
+    }
+    
+    voiceClient->stop();
+    isVoiceActive = false;
+    currentVoiceChannel = "";
+    connectionStatus = "Voice stopped";
+}
+
+void AppState::toggleVoice(const std::string& channel) {
+    if (isVoiceActive) {
+        stopVoice();
+    } else {
+        startVoice(channel);
+    }
+}

@@ -155,6 +155,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
         case EViewState::SERVER_VIEW:
             Views::ServerView("Mój Serwer C++", g_AppState.getChannels(), g_AppState.getMessages(), g_AppState.getChatInput(), g_AppState.getTheme(),
+                g_AppState.getIsVoiceActive(),
                 [&](const std::string& msg) {
                     // Send message through network client if connected
                     if (g_AppState.client && g_AppState.client->isConnected()) {
@@ -179,6 +180,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                         g_AppState.isServerRunning = false;
                     }
                     g_AppState.setView(EViewState::FRIENDS_LIST_VIEW);
+                },
+                [&](const std::string& channel) {
+                    // Join voice channel
+                    g_AppState.toggleVoice(channel);
                 }
             );
             break;
