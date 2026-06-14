@@ -129,8 +129,14 @@ namespace Network {
             readMessages();
             
             // Run the io_context until stopped
+            // Use poll_one() instead of run_one() to avoid blocking
             while (!stopToken.stop_requested() && connected_) {
-                ioContext_.run_one();
+                // poll_one() returns immediately if no handlers are ready
+                // This allows the loop to check stopToken frequently
+                if (ioContext_.poll_one() == 0) {
+                    // No handlers were executed - sleep briefly to prevent CPU overload
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
             }
         } catch (const std::exception& e) {
             std::cerr << "Client error: " << e.what() << std::endl;
