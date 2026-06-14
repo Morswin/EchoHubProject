@@ -14,9 +14,12 @@ VoiceClient::~VoiceClient() {
 
 bool VoiceClient::initialize() {
     // 1. Initialize SDL Audio subsystem (must be called from main thread)
-    if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
-        std::cerr << "SDL Audio initialization error: " << SDL_GetError() << std::endl;
-        return false;
+    // Note: SDL_InitSubSystem returns true if already initialized or if initialization succeeded
+    if (!SDL_WasInit(SDL_INIT_AUDIO)) {
+        if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
+            std::cerr << "SDL Audio initialization error: " << SDL_GetError() << std::endl;
+            return false;
+        }
     }
 
     // 2. Define our desired audio format (48kHz, Mono, 32-bit Float)
@@ -130,10 +133,11 @@ void VoiceClient::shutdown() {
         decoder = nullptr;
     }
     
-    // Quit SDL Audio subsystem
-    // Note: We only quit if we were the ones who initialized it
-    // But for now, we'll always quit to be safe
-    SDL_QuitSubSystem(SDL_INIT_AUDIO);
+    // Note: We don't quit SDL_INIT_AUDIO here because:
+    // 1. It was initialized in the main thread
+    // 2. Other components might need it
+    // 3. SDL_QuitSubSystem should be called from the main thread
+    // SDL audio will be properly cleaned up when the application exits
 }
 
 bool VoiceClient::recordAndEncode(std::vector<uint8_t>& outEncodedPacket) {
