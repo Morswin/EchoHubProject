@@ -1,5 +1,6 @@
 #include "server.hpp"
 #include <iostream>
+#include "../../external/nlohmann/json.hpp"
 
 namespace Network {
 

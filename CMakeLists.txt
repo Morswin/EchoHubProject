@@ -1,8 +1,11 @@
-cmake_minimum_required(VERSION 4.2)
+cmake_minimum_required(VERSION 3.5)
 project(EchoHubProject)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Force CMake policy version to avoid compatibility issues
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
 include(FetchContent)
 
@@ -49,16 +52,8 @@ set(OPUS_BUILD_PROGRAMS OFF CACHE INTERNAL "")
 set(OPUS_BUILD_TESTING OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(opus)
 
-# nlohmann/json library (for network protocol)
-FetchContent_Declare(
-        json
-        GIT_REPOSITORY https://github.com/nlohmann/json.git
-        GIT_TAG v3.11.2
-)
-FetchContent_MakeAvailable(json)
-FetchContent_GetProperties(json SOURCE_DIR JSON_SOURCE_DIR)
-add_library(json_lib INTERFACE)
-target_include_directories(json_lib INTERFACE ${JSON_SOURCE_DIR}/include)
+# nlohmann/json library (single header, included from external/)
+target_include_directories(echo_hub PRIVATE external)
 
 # Our executable
 add_executable(echo_hub
@@ -85,7 +80,6 @@ target_link_libraries(echo_hub PRIVATE
         asio::asio
         opus
         Threads::Threads
-        json_lib
 )
 
 # Copying dynamic libraries

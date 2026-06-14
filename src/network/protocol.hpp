@@ -4,10 +4,9 @@
 #include <string>
 #include <vector>
 #include <cstdint>
-#include <nlohmann/json.hpp>
+#include "../../external/nlohmann/json.hpp"
 
 // Using nlohmann/json for easy JSON serialization
-// If not available, we can use raw strings or implement a simple parser
 using json = nlohmann::json;
 
 namespace Network {
