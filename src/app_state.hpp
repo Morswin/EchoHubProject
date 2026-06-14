@@ -46,6 +46,7 @@ public:
 
     // --- Chat Data ---
     std::string chatInput;
+    std::string dmChatInput;
     std::vector<Molecules::Friend> friends = {
         {"JanKowalski", true},
         {"Programista99", false}
@@ -60,6 +61,8 @@ public:
         {"Admin", "Cześć! Witamy na klonie Discorda napisanym w C++.", "Dzisiaj o 12:00"},
         {"User_C++", "Wygląda super, czat tekstowy i enumy działają stabilnie!", "Dzisiaj o 12:05"}
     };
+    std::vector<Molecules::Message> dmMessages;
+    std::string currentDMFriend;
     
     // --- Channel Users ---
     std::vector<std::string> usersInChannel;
@@ -129,9 +132,13 @@ public:
     [[nodiscard]] std::string& getRegion() { return region; }
     [[nodiscard]] std::string& getNickname() { return nickname; }
     [[nodiscard]] std::string& getChatInput() { return chatInput; }
+    [[nodiscard]] std::string& getDMChatInput() { return dmChatInput; }
     [[nodiscard]] std::vector<Molecules::Friend>& getFriends() { return friends; }
     [[nodiscard]] std::vector<Views::Channel>& getChannels() { return channels; }
     [[nodiscard]] std::vector<Molecules::Message>& getMessages() { return messages; }
+    [[nodiscard]] std::vector<Molecules::Message>& getDMMessages() { return dmMessages; }
+    [[nodiscard]] const std::string& getCurrentDMFriend() const { return currentDMFriend; }
+    void setCurrentDMFriend(const std::string& friendName) { currentDMFriend = friendName; }
     [[nodiscard]] std::string& getSelectedMic() { return selectedMic; }
     [[nodiscard]] std::string& getVerificationLevel() { return verificationLevel; }
 

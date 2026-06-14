@@ -35,6 +35,7 @@ enum class EViewState {
     ERROR_DISCONNECTED_VIEW,    // Błędy sieciowe i utrata połączenia
     REGISTER_VIEW,
     CREATE_CHANNEL_VIEW,        // Tworzenie nowego kanału
+    DIRECT_MESSAGE_VIEW,        // Czat prywatny (DM) z znajomym
 };
 
 #endif //ECHOHUBPROJECT_VIEW_STATES_HPP

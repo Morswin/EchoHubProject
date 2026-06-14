@@ -99,6 +99,30 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                 [&]() {
                     // DM button - stay in FriendsListView (do nothing or just stay)
                     // This is the direct message button, should not connect to server
+                },
+                [&](const std::string& friendName) {
+                    // Start DM chat with this friend
+                    g_AppState.setCurrentDMFriend(friendName);
+                    g_AppState.setView(EViewState::DIRECT_MESSAGE_VIEW);
+                }
+            );
+            break;
+
+        case EViewState::DIRECT_MESSAGE_VIEW:
+            Views::DirectMessageView(g_AppState.getCurrentDMFriend(), g_AppState.getDMMessages(), 
+                g_AppState.getDMChatInput(), g_AppState.getTheme(),
+                [&](const std::string& msg) {
+                    // Send DM message (local echo for now)
+                    g_AppState.getDMMessages().push_back({
+                        g_AppState.getCurrentDMFriend(),
+                        msg,
+                        getCurrentTimestamp()
+                    });
+                    g_AppState.getDMChatInput().clear();
+                },
+                [&]() {
+                    // Back to friends list
+                    g_AppState.setView(EViewState::FRIENDS_LIST_VIEW);
                 }
             );
             break;
@@ -134,6 +158,12 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         case EViewState::CREATE_NEW_SERVER_VIEW:
             Views::CreateNewServerView(g_AppState.getServerName(), g_AppState.getTheme(),
                 [&]() { 
+                    // Check if server name is empty
+                    if (g_AppState.getServerName().empty()) {
+                        std::cerr << "[SERVER CREATION] ERROR: Server name cannot be empty!" << std::endl;
+                        g_AppState.connectionStatus = "Server name cannot be empty";
+                        return;
+                    }
                     std::cout << "[SERVER CREATION] Step 1: Stopping existing server if running..." << std::endl;
                     // Create server and connect to it
                     if (g_AppState.server && g_AppState.server->isRunning()) {

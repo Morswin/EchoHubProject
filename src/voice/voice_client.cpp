@@ -8,7 +8,10 @@ VoiceClient::VoiceClient() : pcmBuffer(FRAME_SIZE), playbackBuffer_(FRAME_SIZE) 
 }
 
 VoiceClient::~VoiceClient() {
+    // Stop the voice thread first
     stop();
+    
+    // Then shutdown audio resources
     shutdown();
 }
 

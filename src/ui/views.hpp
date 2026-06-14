@@ -107,7 +107,8 @@ namespace Views {
         const Theme& theme,
         const std::function<void()>& onCreateServer = {},
         const std::function<void(const std::string&)>& onConnectToServer = {},
-        const std::function<void()>& onDirectMessage = {}
+        const std::function<void()>& onDirectMessage = {},
+        const std::function<void(const std::string&)>& onStartDM = {}
     ) {
         // Grid: [ServerSidebar | SubSidebar | MainContent]
         // Use full screen size and allow resize
@@ -127,7 +128,9 @@ namespace Views {
         Atoms::Text("Prywatne wiadomości", theme, 0);
         ImGui::Spacing();
         for (const auto& friendData : friends) {
-            Molecules::FriendRow(friendData, theme);
+            Molecules::FriendRow(friendData, theme, [&, name = friendData.name]() {
+                if (onStartDM) onStartDM(name);
+            });
             ImGui::Spacing();
         }
         ImGui::Spacing();
@@ -519,6 +522,61 @@ namespace Views {
         if (Atoms::Button("Anuluj", theme, {150, 40}, onCancel)) {}
         ImGui::EndGroup();
         
+        ImGui::End();
+    }
+
+    inline void DirectMessageView(
+        const std::string& friendName,
+        const std::vector<Molecules::Message>& messages,
+        std::string& chatInput,
+        const Theme& theme,
+        const std::function<void(const std::string&)>& onSendMessage = {},
+        const std::function<void()>& onBack = {}
+    ) {
+        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+        ImGui::SetNextWindowPos({0, 0});
+        ImGui::Begin("EchoHub - DM", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove);
+
+        // 1. ServerSidebar (ikony)
+        ImGui::BeginChild("ServerSidebar", {72, -1}, true);
+        Molecules::ServerIcon("DM", theme, true);
+        ImGui::EndChild();
+        ImGui::SameLine();
+
+        // 2. SubSidebar (lista znajomych)
+        ImGui::BeginChild("SubSidebar", {240, -1}, true);
+        Atoms::Text("Prywatne wiadomości", theme, 0);
+        ImGui::Spacing();
+        Molecules::ChannelListItem(friendName, "", true, theme);
+        ImGui::EndChild();
+        ImGui::SameLine();
+
+        // 3. MainContent (czat DM)
+        ImGui::BeginChild("MainContent");
+        // Nagłówek
+        ImGui::BeginGroup();
+        Atoms::Text("DM z " + friendName, theme, 0);
+        ImGui::EndGroup();
+        Atoms::Separator(theme);
+        ImGui::Spacing();
+
+        // Wiadomości
+        for (const auto& msg : messages) {
+            Molecules::RenderMessage(msg, theme);
+        }
+
+        // Input czatu
+        Atoms::InputText("", chatInput, theme, {-1, 0}, "Napisz wiadomość...");
+        ImGui::SameLine();
+        if (Atoms::Button("Wyślij", theme, {0, 0}, [&]() { 
+            if (!chatInput.empty() && onSendMessage) {
+                onSendMessage(chatInput);
+                chatInput.clear();
+            }
+        })) {}
+
+        ImGui::EndChild();
+
         ImGui::End();
     }
 
