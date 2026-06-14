@@ -176,18 +176,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                     // Connect to existing server
                     g_AppState.setView(EViewState::CONNECT_TO_NEW_SERVER_VIEW); 
                 },
-                [&]() { 
-                    // Disconnect from server
-                    if (g_AppState.client && g_AppState.client->isConnected()) {
-                        g_AppState.client->disconnect();
-                        g_AppState.isConnectedToServer = false;
-                    }
-                    if (g_AppState.server && g_AppState.server->isRunning()) {
-                        g_AppState.server->stop();
-                        g_AppState.isServerRunning = false;
-                    }
-                    g_AppState.setView(EViewState::FRIENDS_LIST_VIEW);
-                },
+                [&]() { g_AppState.setView(EViewState::FRIENDS_LIST_VIEW); },
                 [&](const std::string& channel, bool isTextChannel) {
                     // Switch channel
                     g_AppState.switchChannel(channel, isTextChannel);

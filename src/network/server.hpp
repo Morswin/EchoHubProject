@@ -78,6 +78,11 @@ namespace Network {
          */
         std::vector<std::string> getUsersInChannel(const std::string& channelName) const;
 
+        /**
+         * @brief Broadcast updated channel list to all clients.
+         */
+        void broadcastChannelList();
+
     private:
         // --- Server Configuration ---
         uint16_t port_;        // TCP port for text chat

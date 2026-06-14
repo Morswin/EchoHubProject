@@ -60,14 +60,15 @@ namespace Views {
         ImGui::Spacing();
 
         // Login button is disabled if username is empty
-        bool canLogin = !username.empty();
         if (Atoms::Button("Zaloguj się", theme, {200, 40}, [&]() {
-            if (selectedUserIndex >= 0) {
-                username = users[selectedUserIndex];
+            if (!username.empty()) {
+                if (selectedUserIndex >= 0) {
+                    username = users[selectedUserIndex];
+                }
+                UserManager::setCurrentUser(username);
+                if (onLogin) onLogin();
             }
-            UserManager::setCurrentUser(username);
-            if (onLogin) onLogin();
-        }, !canLogin)) {}
+        }, username.empty())) {}
 
         ImGui::Spacing();
         if (Atoms::Button("Zarejestruj nowego użytkownika", theme, {200, 40}, onRegister)) {}

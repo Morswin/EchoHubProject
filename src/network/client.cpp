@@ -203,7 +203,7 @@ namespace Network {
                 handleUserLeft(msg.data);
                 break;
             }
-            case MessageType::ERROR: {
+            case MessageType::ERROR_MSG: {
                 std::cerr << "Server error: " << msg.data.get("error", "Unknown error") << std::endl;
                 break;
             }
@@ -238,6 +238,13 @@ namespace Network {
             
             // Request channel list after successful login
             requestChannelList();
+            
+            // Auto-join the first text channel (default channel)
+            // This will be set properly when channel list is received
+            // For now, join a default channel if we know one exists
+            if (currentChannel_.empty()) {
+                joinChannel("ogólny");
+            }
         }
     }
 

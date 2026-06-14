@@ -32,7 +32,7 @@ bool VoiceClient::initialize() {
     micDeviceId_ = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_RECORDING, &desiredSpec);
     if (micDeviceId_ == 0) {
         std::cerr << "SDL Microphone opening error: " << SDL_GetError() << std::endl;
-        SDL_QuitSubSystem(SDL_INIT_AUDIO);
+        std::cerr << "Note: No microphone device available. Voice chat will not work." << std::endl;
         return false;
     }
 
@@ -40,9 +40,9 @@ bool VoiceClient::initialize() {
     speakerDeviceId_ = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desiredSpec);
     if (speakerDeviceId_ == 0) {
         std::cerr << "SDL Speaker opening error: " << SDL_GetError() << std::endl;
+        std::cerr << "Note: No speaker device available. Voice chat will not work." << std::endl;
         SDL_CloseAudioDevice(micDeviceId_);
         micDeviceId_ = 0;
-        SDL_QuitSubSystem(SDL_INIT_AUDIO);
         return false;
     }
 

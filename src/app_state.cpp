@@ -112,8 +112,12 @@ void AppState::switchChannel(const std::string& channel, bool isTextChannel) {
         stopVoice();
     }
     
-    // Set new current channel
-    setCurrentChannel(channel);
+    // Set new current channel (text or voice)
+    if (isTextChannel) {
+        setCurrentChannel(channel);
+    } else {
+        setCurrentVoiceChannel(channel);
+    }
     
     // Join the channel on the server
     client->joinChannel(channel);

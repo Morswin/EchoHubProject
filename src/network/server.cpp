@@ -405,6 +405,37 @@ namespace Network {
         }
     }
 
+    void Server::broadcastChannelList() {
+        std::lock_guard<std::mutex> lock(clientsMutex_);
+        
+        // Build channel list string
+        std::string channelsStr;
+        {
+            std::lock_guard<std::mutex> lock2(channelsMutex_);
+            for (const auto& pair : channels_) {
+                const auto& channel = pair.second;
+                if (!channelsStr.empty()) {
+                    channelsStr += ";";
+                }
+                channelsStr += channel.name + "," + channel.icon + "," + (channel.isTextChannel ? "true" : "false");
+            }
+        }
+        
+        // Send to all clients
+        Message msg;
+        msg.type = MessageType::CHANNEL_LIST_RESPONSE;
+        msg.data.set("channels", channelsStr);
+        
+        for (auto& pair : tcpClients_) {
+            try {
+                std::string msgStr = msg.serialize() + "\n";
+                asio::write(pair.second->tcpSocket, asio::buffer(msgStr));
+            } catch (const std::exception& e) {
+                std::cerr << "Error sending channel list to client: " << e.what() << std::endl;
+            }
+        }
+    }
+
     void Server::broadcastVoicePacket(const VoicePacket& pkt, const std::string& channel) {
         std::lock_guard<std::mutex> lock(clientsMutex_);
         
@@ -469,6 +500,9 @@ namespace Network {
     void Server::addChannel(const std::string& name, const std::string& icon, bool isTextChannel) {
         std::lock_guard<std::mutex> lock(channelsMutex_);
         channels_[name] = {name, icon, isTextChannel, {}};
+        
+        // Notify all clients about the new channel list
+        broadcastChannelList();
     }
 
     std::vector<ChannelInfo> Server::getChannels() const {
