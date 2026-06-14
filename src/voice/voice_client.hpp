@@ -109,6 +109,7 @@ private:
     // --- Thread Management ---
     std::jthread voiceThread_;
     std::atomic<bool> running_{false};
+    std::atomic<bool> stopRequested_{false};
 
     // --- Callbacks ---
     VoicePacketCallback onVoicePacketCallback_;
