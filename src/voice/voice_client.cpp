@@ -105,7 +105,7 @@ bool VoiceClient::initialize() {
 
 void VoiceClient::shutdown() {
     // Stop the voice thread first (if running)
-    // Note: stop() already closes devices and unbinds streams
+    // Note: stop() already unbinds streams
     stop();
     
     // Destroy streams (already unbound by stop())
@@ -116,6 +116,16 @@ void VoiceClient::shutdown() {
     if (speakerStream) {
         SDL_DestroyAudioStream(speakerStream);
         speakerStream = nullptr;
+    }
+    
+    // Close audio devices
+    if (micDeviceId_ != 0) {
+        SDL_CloseAudioDevice(micDeviceId_);
+        micDeviceId_ = 0;
+    }
+    if (speakerDeviceId_ != 0) {
+        SDL_CloseAudioDevice(speakerDeviceId_);
+        speakerDeviceId_ = 0;
     }
     
     // Clean up Opus codecs
@@ -229,16 +239,14 @@ void VoiceClient::stop() {
     stopRequested_ = true;
     running_ = false;
     
-    // Close audio devices FIRST to unblock any SDL operations
-    // This will cause SDL_GetAudioStreamData/SDL_PutAudioStreamData to fail immediately
-    std::cout << "[VOICE] Closing audio devices to unblock thread..." << std::endl;
-    if (micDeviceId_ != 0) {
-        SDL_CloseAudioDevice(micDeviceId_);
-        micDeviceId_ = 0;
+    // Unbind streams to unblock any SDL operations in the voice thread
+    // This is safe to do from any thread according to SDL3 docs
+    std::cout << "[VOICE] Unbinding streams to unblock thread..." << std::endl;
+    if (micStream) {
+        SDL_UnbindAudioStream(micStream);
     }
-    if (speakerDeviceId_ != 0) {
-        SDL_CloseAudioDevice(speakerDeviceId_);
-        speakerDeviceId_ = 0;
+    if (speakerStream) {
+        SDL_UnbindAudioStream(speakerStream);
     }
     
     if (voiceThread_.joinable()) {
@@ -299,13 +307,5 @@ void VoiceClient::voiceThreadFunction(std::stop_token stopToken) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     
-    // Clean up: Unbind streams in the voice thread itself to avoid race conditions
-    std::cout << "[VOICE THREAD] Exiting, unbinding streams..." << std::endl;
-    if (micStream) {
-        SDL_UnbindAudioStream(micStream);
-    }
-    if (speakerStream) {
-        SDL_UnbindAudioStream(speakerStream);
-    }
     std::cout << "[VOICE THREAD] Exited cleanly" << std::endl;
 }
