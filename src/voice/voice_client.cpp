@@ -105,7 +105,7 @@ bool VoiceClient::initialize() {
 
 void VoiceClient::shutdown() {
     // Stop the voice thread first (if running)
-    // Note: stop() already unbinds streams, so we don't need to do it again here
+    // Note: stop() already closes devices and unbinds streams
     stop();
     
     // Destroy streams (already unbound by stop())
@@ -116,16 +116,6 @@ void VoiceClient::shutdown() {
     if (speakerStream) {
         SDL_DestroyAudioStream(speakerStream);
         speakerStream = nullptr;
-    }
-    
-    // Close audio devices
-    if (micDeviceId_ != 0) {
-        SDL_CloseAudioDevice(micDeviceId_);
-        micDeviceId_ = 0;
-    }
-    if (speakerDeviceId_ != 0) {
-        SDL_CloseAudioDevice(speakerDeviceId_);
-        speakerDeviceId_ = 0;
     }
     
     // Clean up Opus codecs
@@ -146,14 +136,14 @@ void VoiceClient::shutdown() {
 }
 
 bool VoiceClient::recordAndEncode(std::vector<uint8_t>& outEncodedPacket) {
-    if (!isInitialized()) {
+    if (!isInitialized() || !running_) {
         return false;
     }
 
     // Check if there's enough data in the microphone stream for a full frame
     int available = SDL_GetAudioStreamAvailable(micStream);
     if (available >= BYTES_PER_FRAME) {
-        // Get raw PCM data from microphone stream
+        // Get raw PCM data from microphone stream (non-blocking)
         int got = SDL_GetAudioStreamData(micStream, pcmBuffer.data(), BYTES_PER_FRAME);
         if (got <= 0) {
             return false;
@@ -235,10 +225,21 @@ void VoiceClient::stop() {
     if (!running_) return;
 
     // Signal the thread to stop FIRST
-    // The thread will unbind streams itself when it sees the signal
     std::cout << "[VOICE] Signaling thread to stop..." << std::endl;
     stopRequested_ = true;
     running_ = false;
+    
+    // Close audio devices FIRST to unblock any SDL operations
+    // This will cause SDL_GetAudioStreamData/SDL_PutAudioStreamData to fail immediately
+    std::cout << "[VOICE] Closing audio devices to unblock thread..." << std::endl;
+    if (micDeviceId_ != 0) {
+        SDL_CloseAudioDevice(micDeviceId_);
+        micDeviceId_ = 0;
+    }
+    if (speakerDeviceId_ != 0) {
+        SDL_CloseAudioDevice(speakerDeviceId_);
+        speakerDeviceId_ = 0;
+    }
     
     if (voiceThread_.joinable()) {
         voiceThread_.request_stop();
