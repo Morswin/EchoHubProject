@@ -57,6 +57,24 @@ public:
 
     [[nodiscard]] const std::string& getUsername() const { return username; }
     void setUsername(const std::string& newUsername) { username = newUsername; }
+
+    [[nodiscard]] SDL_Window* getWindow() const { return window; }
+    [[nodiscard]] SDL_Renderer* getRenderer() const { return renderer; }
+    [[nodiscard]] Theme& getTheme() { return theme; }
+    [[nodiscard]] std::string& getServerAddress() { return serverAddress; }
+    [[nodiscard]] std::string& getUsername() { return username; }
+    [[nodiscard]] std::string& getServerName() { return serverName; }
+    [[nodiscard]] std::string& getRegion() { return region; }
+    [[nodiscard]] std::string& getNickname() { return nickname; }
+    [[nodiscard]] std::string& getChatInput() { return chatInput; }
+    [[nodiscard]] std::vector<Molecules::Friend>& getFriends() { return friends; }
+    [[nodiscard]] std::vector<Views::Channel>& getChannels() { return channels; }
+    [[nodiscard]] std::vector<Molecules::Message>& getMessages() { return messages; }
+    [[nodiscard]] std::string& getSelectedMic() { return selectedMic; }
+    [[nodiscard]] std::string& getVerificationLevel() { return verificationLevel; }
+
+    [[nodiscard]] EViewState getView() const { return currentView; }
+    void setView(EViewState view) { currentView = view; }
 };
 
 #endif //ECHOHUBPROJECT_APP_STATE_HPP
