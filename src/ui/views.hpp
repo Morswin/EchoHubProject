@@ -299,9 +299,11 @@ namespace Views {
         Atoms::Separator(theme);
         ImGui::Spacing();
 
-        // Wiadomości
+        // Wiadomości - filter by current channel
         for (const auto& msg : messages) {
-            Molecules::RenderMessage(msg, theme);
+            if (msg.channel == currentChannel) {
+                Molecules::RenderMessage(msg, theme);
+            }
         }
 
         // Input czatu
@@ -334,10 +336,11 @@ namespace Views {
         std::string& username,
         std::string& selectedMic,
         const Theme& theme,
-        const std::function<void()>& onSave = {}
+        const std::function<void()>& onSave = {},
+        const std::function<void()>& onLogout = {}
     ) {
-        ImGui::SetNextWindowSize({800, 600});
-        ImGui::SetNextWindowPos(CenteredPosition({800, 600}), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+        ImGui::SetNextWindowPos({0, 0});
 
         ImGui::Begin("Ustawienia użytkownika", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
         // Sidebar
@@ -348,7 +351,7 @@ namespace Views {
         Molecules::ChannelListItem("Dźwięk i wideo", "", false, theme);
         Molecules::ChannelListItem("Wygląd", "", false, theme);
         ImGui::Spacing();
-        Atoms::Text("Wyloguj się", theme, 3); // 3 = error color
+        if (Atoms::Button("Wyloguj się", theme, {200, 40}, onLogout)) {}
         ImGui::EndChild();
         ImGui::SameLine();
 

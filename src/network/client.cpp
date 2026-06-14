@@ -447,6 +447,8 @@ namespace Network {
             std::memcpy(packet.data(), &size, 4);
             std::memcpy(packet.data() + 4, audioData.data(), audioData.size());
             
+            // Lock to prevent concurrent access to UDP socket from multiple threads
+            std::lock_guard<std::mutex> lock(udpSendMutex_);
             udpSocket_->send_to(asio::buffer(packet), voiceEndpoint_);
         } catch (const std::exception& e) {
             std::cerr << "Error sending voice packet: " << e.what() << std::endl;

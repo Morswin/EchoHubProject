@@ -82,25 +82,8 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                 [&]() { g_AppState.setView(EViewState::FRIENDS_LIST_VIEW); },
                 [&]() { g_AppState.setView(EViewState::CONNECT_TO_NEW_SERVER_VIEW); },
                 [&]() { 
-                    std::cout << "[LANDING] Creating server from LandingView..." << std::endl;
-                    // Stop any existing server first
-                    if (g_AppState.server && g_AppState.server->isRunning()) {
-                        std::cout << "[LANDING] Stopping existing server..." << std::endl;
-                        g_AppState.server->stop();
-                    }
-                    std::cout << "[LANDING] Creating new Server instance..." << std::endl;
-                    g_AppState.server = std::make_unique<Network::Server>(9987, 9988);
-                    
-                    std::cout << "[LANDING] Starting server..." << std::endl;
-                    g_AppState.isServerRunning = g_AppState.server->start();
-                    std::cout << "[LANDING] Server started: " << (g_AppState.isServerRunning ? "YES" : "NO") << std::endl;
-                    
-                    if (g_AppState.isServerRunning) {
-                        std::cout << "[LANDING] Server ready, showing CONNECTING_LOADING_VIEW" << std::endl;
-                        g_AppState.setView(EViewState::CONNECTING_LOADING_VIEW);
-                    } else {
-                        std::cerr << "[LANDING] ERROR: Server failed to start!" << std::endl;
-                    }
+                    std::cout << "[LANDING] Navigating to CREATE_NEW_SERVER_VIEW" << std::endl;
+                    g_AppState.setView(EViewState::CREATE_NEW_SERVER_VIEW);
                 },
                 [&]() { g_AppState.setView(EViewState::USER_SETTINGS_VIEW); }
             );
@@ -159,21 +142,19 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
                         std::cout << "[SERVER CREATION] Existing server stopped." << std::endl;
                     }
                     
-                    std::cout << "[SERVER CREATION] Step 2: Creating new Server instance..." << std::endl;
+                    std::cout << "[SERVER CREATION] Step 2: Creating new Server instance with name: " << g_AppState.getServerName() << std::endl;
                     g_AppState.server = std::make_unique<Network::Server>(9987, 9988);
                     std::cout << "[SERVER CREATION] Server instance created." << std::endl;
                     
                     std::cout << "[SERVER CREATION] Step 3: Adding default channels..." << std::endl;
-                    // Add default channels BEFORE starting the server
+                    // Add default channels BEFORE starting the server (2 text + 1 voice)
                     g_AppState.server->addChannel("ogólny", "#", true);
                     std::cout << "[SERVER CREATION] Added channel: ogólny" << std::endl;
                     g_AppState.server->addChannel("pomoc-kod", "#", true);
                     std::cout << "[SERVER CREATION] Added channel: pomoc-kod" << std::endl;
                     g_AppState.server->addChannel("Poczekalnia", "🔊", false);
                     std::cout << "[SERVER CREATION] Added channel: Poczekalnia" << std::endl;
-                    g_AppState.server->addChannel("Pokój gier", "🔊", false);
-                    std::cout << "[SERVER CREATION] Added channel: Pokój gier" << std::endl;
-                    std::cout << "[SERVER CREATION] All default channels added." << std::endl;
+                    std::cout << "[SERVER CREATION] All default channels added (2 text + 1 voice)." << std::endl;
                     
                     std::cout << "[SERVER CREATION] Step 4: Starting server..." << std::endl;
                     g_AppState.isServerRunning = g_AppState.server->start();
@@ -215,7 +196,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             break;
 
         case EViewState::SERVER_VIEW:
-            Views::ServerView("Mój Serwer C++", g_AppState.getChannels(), g_AppState.getMessages(), g_AppState.getChatInput(), g_AppState.getTheme(),
+            Views::ServerView(g_AppState.getServerName().empty() ? "Mój Serwer C++" : g_AppState.getServerName(), g_AppState.getChannels(), g_AppState.getMessages(), g_AppState.getChatInput(), g_AppState.getTheme(),
                 g_AppState.getCurrentChannel(),
                 g_AppState.getCurrentVoiceChannelRef(),
                 g_AppState.getIsVoiceActive(),
@@ -266,7 +247,12 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
         case EViewState::USER_SETTINGS_VIEW:
             Views::UserSettingsView(g_AppState.getUsername(), g_AppState.getSelectedMic(), g_AppState.getTheme(),
-                [&]() { g_AppState.setView(EViewState::LANDING_VIEW); }
+                [&]() { g_AppState.setView(EViewState::LANDING_VIEW); },
+                [&]() {
+                    // Logout - clear username and go back to auth
+                    g_AppState.setUsername("");
+                    g_AppState.setView(EViewState::AUTH_VIEW);
+                }
             );
             break;
 

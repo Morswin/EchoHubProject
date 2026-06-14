@@ -158,6 +158,11 @@ void AppState::createChannel(const std::string& channelName, bool isTextChannel)
     
     connectionStatus = "Created channel: " + channelName;
     newChannelName.clear();
+    
+    // Switch to the new channel if it's a text channel
+    if (isTextChannel) {
+        switchChannel(channelName, true);
+    }
 }
 
 // --- Voice Controls ---

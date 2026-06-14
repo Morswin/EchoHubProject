@@ -8,6 +8,7 @@
 #include <thread>
 #include <atomic>
 #include <functional>
+#include <mutex>
 
 #include "protocol.hpp"
 #include "../utils/thread_safe_queue.hpp"
@@ -192,6 +193,7 @@ namespace Network {
         udp::endpoint voiceEndpoint_;
         std::thread clientThread_;
         std::thread udpThread_;
+        std::mutex udpSendMutex_; // Protect UDP send operations
 
         // --- Callbacks ---
         TextMessageCallback textMessageCallback_;

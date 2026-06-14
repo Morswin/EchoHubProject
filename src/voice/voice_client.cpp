@@ -243,18 +243,20 @@ void VoiceClient::queueVoicePacket(const std::vector<uint8_t>& packet) {
 }
 
 void VoiceClient::voiceThreadFunction() {
-    std::cout << "Voice thread started" << std::endl;
+    std::cout << "[VOICE THREAD] Started" << std::endl;
     
     while (!shouldStop_) {
         // 1. Process incoming voice packets (decode and queue for playback)
         std::vector<uint8_t> incomingPacket;
         if (incomingVoicePackets_.tryPop(incomingPacket)) {
+            std::cout << "[VOICE THREAD] Processing incoming packet" << std::endl;
             decodeAndPlay(incomingPacket);
         }
         
         // 2. Process captured audio (encode and send)
         std::vector<uint8_t> encodedPacket;
         if (recordAndEncode(encodedPacket)) {
+            std::cout << "[VOICE THREAD] Recorded and encoded packet" << std::endl;
             // Send the packet via callback
             if (onVoicePacketCallback_) {
                 onVoicePacketCallback_(encodedPacket);
@@ -264,6 +266,7 @@ void VoiceClient::voiceThreadFunction() {
         // 3. Process playback queue (send to speaker)
         std::vector<float> playbackFrame;
         if (playbackAudioQueue_.tryPop(playbackFrame)) {
+            std::cout << "[VOICE THREAD] Playing back audio frame" << std::endl;
             if (speakerStream) {
                 SDL_PutAudioStreamData(speakerStream, playbackFrame.data(), playbackFrame.size() * sizeof(float));
             }
@@ -273,5 +276,5 @@ void VoiceClient::voiceThreadFunction() {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     
-    std::cout << "Voice thread exiting" << std::endl;
+    std::cout << "[VOICE THREAD] Exiting" << std::endl;
 }

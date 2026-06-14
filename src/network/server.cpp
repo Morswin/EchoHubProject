@@ -504,14 +504,8 @@ namespace Network {
         std::lock_guard<std::mutex> lock(channelsMutex_);
         channels_[name] = {name, icon, isTextChannel, {}};
         
-        std::cout << "[SERVER] Channel added. Broadcasting channel list to clients..." << std::endl;
-        // Notify all clients about the new channel list (only if server is running)
-        if (running_) {
-            broadcastChannelList();
-            std::cout << "[SERVER] Channel list broadcasted." << std::endl;
-        } else {
-            std::cout << "[SERVER] Server not running yet, skipping broadcast." << std::endl;
-        }
+        std::cout << "[SERVER] Channel added to server." << std::endl;
+        // Note: Channel list broadcast is handled separately to avoid blocking the main thread
     }
 
     std::vector<ChannelInfo> Server::getChannels() const {
