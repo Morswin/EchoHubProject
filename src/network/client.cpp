@@ -434,7 +434,11 @@ namespace Network {
     }
 
     void Client::sendVoicePacketUdp(const std::vector<uint8_t>& audioData) {
+        std::cout << "[UDP] sendVoicePacketUdp called, audioData size: " << audioData.size() << std::endl;
+        std::cout << "[UDP] connected_: " << connected_ << ", voiceEndpoint valid: " << !voiceEndpoint_.address().to_string().empty() << std::endl;
+        
         if (!connected_ || voiceEndpoint_.address().to_string().empty()) {
+            std::cout << "[UDP] Skipping send - not connected or no endpoint" << std::endl;
             return;
         }
         
@@ -447,11 +451,13 @@ namespace Network {
             std::memcpy(packet.data(), &size, 4);
             std::memcpy(packet.data() + 4, audioData.data(), audioData.size());
             
+            std::cout << "[UDP] About to send packet of size: " << packet.size() << " to " << voiceEndpoint_ << std::endl;
             // Lock to prevent concurrent access to UDP socket from multiple threads
             std::lock_guard<std::mutex> lock(udpSendMutex_);
             udpSocket_->send_to(asio::buffer(packet), voiceEndpoint_);
+            std::cout << "[UDP] Packet sent successfully" << std::endl;
         } catch (const std::exception& e) {
-            std::cerr << "Error sending voice packet: " << e.what() << std::endl;
+            std::cerr << "[UDP] Error sending voice packet: " << e.what() << std::endl;
         }
     }
 

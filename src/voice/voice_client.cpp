@@ -246,32 +246,40 @@ void VoiceClient::voiceThreadFunction() {
     std::cout << "[VOICE THREAD] Started" << std::endl;
     
     while (!shouldStop_) {
+        std::cout << "[VOICE THREAD] Loop iteration starting" << std::endl;
+        
         // 1. Process incoming voice packets (decode and queue for playback)
         std::vector<uint8_t> incomingPacket;
         if (incomingVoicePackets_.tryPop(incomingPacket)) {
-            std::cout << "[VOICE THREAD] Processing incoming packet" << std::endl;
+            std::cout << "[VOICE THREAD] Processing incoming packet (size: " << incomingPacket.size() << ")" << std::endl;
             decodeAndPlay(incomingPacket);
+            std::cout << "[VOICE THREAD] Finished processing incoming packet" << std::endl;
         }
         
         // 2. Process captured audio (encode and send)
         std::vector<uint8_t> encodedPacket;
         if (recordAndEncode(encodedPacket)) {
-            std::cout << "[VOICE THREAD] Recorded and encoded packet" << std::endl;
+            std::cout << "[VOICE THREAD] Recorded and encoded packet (size: " << encodedPacket.size() << ")" << std::endl;
             // Send the packet via callback
             if (onVoicePacketCallback_) {
+                std::cout << "[VOICE THREAD] Calling onVoicePacketCallback" << std::endl;
                 onVoicePacketCallback_(encodedPacket);
+                std::cout << "[VOICE THREAD] onVoicePacketCallback returned" << std::endl;
             }
         }
         
         // 3. Process playback queue (send to speaker)
         std::vector<float> playbackFrame;
         if (playbackAudioQueue_.tryPop(playbackFrame)) {
-            std::cout << "[VOICE THREAD] Playing back audio frame" << std::endl;
+            std::cout << "[VOICE THREAD] Playing back audio frame (size: " << playbackFrame.size() << ")" << std::endl;
             if (speakerStream) {
+                std::cout << "[VOICE THREAD] Calling SDL_PutAudioStreamData" << std::endl;
                 SDL_PutAudioStreamData(speakerStream, playbackFrame.data(), playbackFrame.size() * sizeof(float));
+                std::cout << "[VOICE THREAD] SDL_PutAudioStreamData returned" << std::endl;
             }
         }
         
+        std::cout << "[VOICE THREAD] Loop iteration completed" << std::endl;
         // 4. Small sleep to prevent CPU overload
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }

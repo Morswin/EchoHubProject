@@ -63,6 +63,7 @@ public:
     
     // --- Channel Users ---
     std::vector<std::string> usersInChannel;
+    std::unordered_map<std::string, std::vector<std::string>> usersInVoiceChannels;
 
     // --- Theme ---
     Theme theme = Theme::createGoldGalaxyTheme();
@@ -146,6 +147,11 @@ public:
     
     [[nodiscard]] const std::vector<std::string>& getUsersInChannel() const { return usersInChannel; }
     void setUsersInChannel(const std::vector<std::string>& users) { usersInChannel = users; }
+    
+    [[nodiscard]] const std::unordered_map<std::string, std::vector<std::string>>& getUsersInVoiceChannels() const { return usersInVoiceChannels; }
+    void setUsersInVoiceChannel(const std::string& channel, const std::vector<std::string>& users) {
+        usersInVoiceChannels[channel] = users;
+    }
     
     [[nodiscard]] bool getIsConnecting() const { return isConnecting; }
     void setIsConnecting(bool connecting) { isConnecting = connecting; }

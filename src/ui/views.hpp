@@ -122,24 +122,22 @@ namespace Views {
         ImGui::EndChild();
         ImGui::SameLine();
 
-        // 2. SubSidebar (puste, bo to lista znajomych)
+        // 2. SubSidebar (lista znajomych)
         ImGui::BeginChild("SubSidebar", {240, -1}, true);
         Atoms::Text("Prywatne wiadomości", theme, 0);
-        ImGui::EndChild();
-        ImGui::SameLine();
-
-        // 3. MainContent (lista znajomych)
-        ImGui::BeginChild("MainContent");
-        Atoms::Text("👥 Znajomi", theme, 0);
         ImGui::Spacing();
         for (const auto& friendData : friends) {
             Molecules::FriendRow(friendData, theme);
             ImGui::Spacing();
         }
         ImGui::Spacing();
-        ImGui::Separator();
-        ImGui::Spacing();
         if (Atoms::Button("Dołącz do istniejącego serwera", theme, {200, 40}, [&]() { if (onConnectToServer) onConnectToServer(""); })) {}
+        ImGui::EndChild();
+        ImGui::SameLine();
+
+        // 3. MainContent (puste - tutaj będą czaty DM)
+        ImGui::BeginChild("MainContent");
+        Atoms::Text("Wybierz znajomego, aby rozpocząć czat", theme, 1);
         ImGui::EndChild();
 
         ImGui::End();
@@ -187,7 +185,8 @@ namespace Views {
         Atoms::InputText("Nazwa serwera", serverName, theme, {200, 0}, "Serwer programistyczny");
         ImGui::Spacing();
 
-        if (Atoms::Button("Stwórz", theme, {200, 40}, onCreate)) {}
+        // Disable create button if server name is empty
+        if (Atoms::Button("Stwórz", theme, {200, 40}, onCreate, serverName.empty())) {}
         ImGui::Spacing();
         if (Atoms::Button("Wróć", theme, {200, 40}, onBack)) {}
 
