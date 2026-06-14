@@ -47,10 +47,20 @@ namespace Network {
             udpSocket_->close();
         }
         
-        // Request stop for jthread (it will auto-join in destructor)
+        // Request stop for jthread and wait for it to finish
         if (serverThread_.joinable()) {
             serverThread_.request_stop();
-            // jthread will auto-join when it finishes or when destructor is called
+            
+            // Wait for thread to stop with timeout
+            std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
+            while (serverThread_.joinable() && 
+                   std::chrono::steady_clock::now() - start < std::chrono::milliseconds(500)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+            
+            if (serverThread_.joinable()) {
+                std::cerr << "[SERVER] Warning: Server thread did not stop within 500ms" << std::endl;
+            }
         }
         
         std::cout << "Server stopped" << std::endl;

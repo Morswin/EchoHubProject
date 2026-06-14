@@ -109,14 +109,37 @@ namespace Network {
             udpSocket_->close();
         }
         
-        // Request stop for jthreads (they will auto-join in destructor)
+        // Request stop for jthreads and wait for them to finish
+        std::chrono::steady_clock::time_point start;
+        
         if (clientThread_.joinable()) {
             clientThread_.request_stop();
+            
+            // Wait for thread to stop with timeout
+            start = std::chrono::steady_clock::now();
+            while (clientThread_.joinable() && 
+                   std::chrono::steady_clock::now() - start < std::chrono::milliseconds(500)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+            
+            if (clientThread_.joinable()) {
+                std::cerr << "[CLIENT] Warning: Client thread did not stop within 500ms" << std::endl;
+            }
         }
         if (udpThread_.joinable()) {
             udpThread_.request_stop();
+            
+            // Wait for thread to stop with timeout
+            start = std::chrono::steady_clock::now();
+            while (udpThread_.joinable() && 
+                   std::chrono::steady_clock::now() - start < std::chrono::milliseconds(500)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+            
+            if (udpThread_.joinable()) {
+                std::cerr << "[CLIENT] Warning: UDP thread did not stop within 500ms" << std::endl;
+            }
         }
-        // jthreads will auto-join when they finish or when destructors are called
         
         if (connectionCallback_) {
             connectionCallback_(false, "Disconnected from server");
