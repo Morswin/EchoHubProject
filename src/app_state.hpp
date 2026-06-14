@@ -60,6 +60,16 @@ public:
     std::unique_ptr<Network::Client> client;
     std::unique_ptr<VoiceClient> voiceClient;
     bool isServerRunning = false;
+    bool isConnectedToServer = false;
+    std::string connectionStatus = "";
+
+    // --- Network Callbacks ---
+    void setupNetworkCallbacks();
+    void onTextMessageReceived(const Network::TextMessage& msg);
+    void onVoicePacketReceived(const Network::VoicePacket& pkt);
+    void onConnectionStatusChanged(bool connected, const std::string& message);
+    void onChannelListReceived(const std::vector<Network::ChannelInfo>& channels);
+    void onUserListReceived(const std::vector<std::string>& users);
 
     // --- Gettery/Settery ---
     [[nodiscard]] EViewState getCurrentView() const { return currentView; }

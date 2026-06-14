@@ -64,7 +64,17 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             Views::LandingView(g_AppState.getTheme(),
                 [&]() { g_AppState.setView(EViewState::FRIENDS_LIST_VIEW); },
                 [&]() { g_AppState.setView(EViewState::CONNECT_TO_NEW_SERVER_VIEW); },
-                [&]() { g_AppState.setView(EViewState::CREATE_NEW_SERVER_VIEW); }
+                [&]() { 
+                    // Stop any existing server first
+                    if (g_AppState.server && g_AppState.server->isRunning()) {
+                        g_AppState.server->stop();
+                    }
+                    g_AppState.server = std::make_unique<Network::Server>(9987, 9988);
+                    g_AppState.isServerRunning = g_AppState.server->start();
+                    if (g_AppState.isServerRunning) {
+                        g_AppState.setView(EViewState::CONNECTING_LOADING_VIEW);
+                    }
+                }
             );
             break;
 
@@ -80,14 +90,65 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
         case EViewState::CONNECT_TO_NEW_SERVER_VIEW:
             Views::ConnectToNewServerView(g_AppState.getServerAddress(), g_AppState.getNickname(), g_AppState.getTheme(),
-                [&]() { g_AppState.setView(EViewState::CONNECTING_LOADING_VIEW); },
+                [&]() { 
+                    // Connect to server
+                    if (g_AppState.client && g_AppState.client->isConnected()) {
+                        g_AppState.client->disconnect();
+                    }
+                    g_AppState.client = std::make_unique<Network::Client>(g_AppState.serverAddress, 9987, 9988);
+                    g_AppState.setupNetworkCallbacks();
+                    
+                    // Use username from auth or default
+                    std::string username = g_AppState.getUsername().empty() ? g_AppState.nickname : g_AppState.getUsername();
+                    bool connected = g_AppState.client->connect(username, "password");
+                    
+                    if (connected) {
+                        g_AppState.isConnectedToServer = true;
+                        g_AppState.client->requestChannelList();
+                        g_AppState.setView(EViewState::CONNECTING_LOADING_VIEW);
+                    } else {
+                        g_AppState.connectionStatus = "Connection failed";
+                        g_AppState.setView(EViewState::ERROR_DISCONNECTED_VIEW);
+                    }
+                },
                 [&]() { g_AppState.setView(EViewState::LANDING_VIEW); }
             );
             break;
 
         case EViewState::CREATE_NEW_SERVER_VIEW:
             Views::CreateNewServerView(g_AppState.getServerName(), g_AppState.getRegion(), g_AppState.getTheme(),
-                [&]() { g_AppState.setView(EViewState::CONNECTING_LOADING_VIEW); },
+                [&]() { 
+                    // Create server and connect to it
+                    if (g_AppState.server && g_AppState.server->isRunning()) {
+                        g_AppState.server->stop();
+                    }
+                    g_AppState.server = std::make_unique<Network::Server>(9987, 9988);
+                    g_AppState.isServerRunning = g_AppState.server->start();
+                    
+                    // Add default channels
+                    g_AppState.server->addChannel("ogólny", "#", true);
+                    g_AppState.server->addChannel("pomoc-kod", "#", true);
+                    g_AppState.server->addChannel("Poczekalnia", "🔊", false);
+                    g_AppState.server->addChannel("Pokój gier", "🔊", false);
+                    
+                    if (g_AppState.isServerRunning) {
+                        // Auto-connect to our own server
+                        g_AppState.client = std::make_unique<Network::Client>("127.0.0.1", 9987, 9988);
+                        g_AppState.setupNetworkCallbacks();
+                        
+                        std::string username = g_AppState.getUsername().empty() ? g_AppState.nickname : g_AppState.getUsername();
+                        bool connected = g_AppState.client->connect(username, "password");
+                        
+                        if (connected) {
+                            g_AppState.isConnectedToServer = true;
+                            g_AppState.client->requestChannelList();
+                            g_AppState.setView(EViewState::CONNECTING_LOADING_VIEW);
+                        } else {
+                            g_AppState.connectionStatus = "Connection failed";
+                            g_AppState.setView(EViewState::ERROR_DISCONNECTED_VIEW);
+                        }
+                    }
+                },
                 [&]() { g_AppState.setView(EViewState::LANDING_VIEW); }
             );
             break;
@@ -95,12 +156,30 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         case EViewState::SERVER_VIEW:
             Views::ServerView("Mój Serwer C++", g_AppState.getChannels(), g_AppState.getMessages(), g_AppState.getChatInput(), g_AppState.getTheme(),
                 [&](const std::string& msg) {
-                    g_AppState.getMessages().push_back({g_AppState.getUsername(), msg, "Teraz"});
+                    // Send message through network client if connected
+                    if (g_AppState.client && g_AppState.client->isConnected()) {
+                        std::string channel = "ogólny"; // Default channel
+                        g_AppState.client->sendTextMessage(channel, msg);
+                    } else {
+                        // Local echo for testing
+                        g_AppState.getMessages().push_back({g_AppState.getUsername(), msg, "Teraz"});
+                    }
                     g_AppState.getChatInput().clear();
                 },
                 [&]() { g_AppState.setView(EViewState::CREATE_NEW_SERVER_VIEW); },
                 [&](const std::string& serverId) { g_AppState.setView(EViewState::SERVER_VIEW); },
-                [&]() { g_AppState.setView(EViewState::FRIENDS_LIST_VIEW); }
+                [&]() { 
+                    // Disconnect from server
+                    if (g_AppState.client && g_AppState.client->isConnected()) {
+                        g_AppState.client->disconnect();
+                        g_AppState.isConnectedToServer = false;
+                    }
+                    if (g_AppState.server && g_AppState.server->isRunning()) {
+                        g_AppState.server->stop();
+                        g_AppState.isServerRunning = false;
+                    }
+                    g_AppState.setView(EViewState::FRIENDS_LIST_VIEW);
+                }
             );
             break;
 
@@ -118,18 +197,45 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
         case EViewState::CONNECTING_LOADING_VIEW:
             Views::ConnectingLoadingView(g_AppState.getTheme());
-            // Symuluj połączenie (później zastąp realną logiką)
-            static int counter = 0;
-            if (counter++ > 60) { // Po 60 klatkach (ok. 1s)
+            // If connected, transition to server view
+            if (g_AppState.isConnectedToServer) {
                 g_AppState.setView(EViewState::SERVER_VIEW);
+            }
+            // Fallback: auto-transition after delay if connection status hasn't been updated
+            static int counter = 0;
+            if (counter++ > 120) { // Po 120 klatkach (ok. 2s)
+                if (g_AppState.client && g_AppState.client->isConnected()) {
+                    g_AppState.setView(EViewState::SERVER_VIEW);
+                } else if (g_AppState.isServerRunning) {
+                    // Server is running, try to connect locally
+                    g_AppState.client = std::make_unique<Network::Client>("127.0.0.1", 9987, 9988);
+                    g_AppState.setupNetworkCallbacks();
+                    std::string username = g_AppState.getUsername().empty() ? g_AppState.nickname : g_AppState.getUsername();
+                    g_AppState.client->connect(username, "password");
+                }
                 counter = 0;
             }
             break;
 
         case EViewState::ERROR_DISCONNECTED_VIEW:
             Views::ErrorDisconnectedView(g_AppState.getTheme(),
-                [&]() { g_AppState.setView(EViewState::CONNECTING_LOADING_VIEW); },
-                [&]() { g_AppState.setView(EViewState::LANDING_VIEW); }
+                [&]() { 
+                    // Reconnect
+                    if (g_AppState.client) {
+                        std::string username = g_AppState.getUsername().empty() ? g_AppState.nickname : g_AppState.getUsername();
+                        g_AppState.client->connect(username, "password");
+                    }
+                    g_AppState.setView(EViewState::CONNECTING_LOADING_VIEW);
+                },
+                [&]() { 
+                    // Clean up and go back
+                    if (g_AppState.client) {
+                        g_AppState.client->disconnect();
+                        g_AppState.client.reset();
+                    }
+                    g_AppState.isConnectedToServer = false;
+                    g_AppState.setView(EViewState::LANDING_VIEW);
+                }
             );
             break;
 

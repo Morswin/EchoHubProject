@@ -172,6 +172,36 @@ namespace Network {
                 handleJoinChannel(channelName, client);
                 break;
             }
+            case MessageType::CHANNEL_LIST_REQUEST: {
+                // Send the channel list to the requesting client
+                std::vector<ChannelInfo> channelList;
+                {
+                    std::lock_guard<std::mutex> lock(channelsMutex_);
+                    for (const auto& pair : channels_) {
+                        ChannelInfo info;
+                        info.name = pair.second.name;
+                        info.icon = pair.second.icon;
+                        info.isTextChannel = pair.second.isTextChannel;
+                        info.users.assign(pair.second.users.begin(), pair.second.users.end());
+                        channelList.push_back(info);
+                    }
+                }
+                
+                // Build message data with channel list
+                MessageData data;
+                std::string channelsStr;
+                for (const auto& channel : channelList) {
+                    if (!channelsStr.empty()) channelsStr += ";";
+                    channelsStr += channel.name + "," + channel.icon + "," + (channel.isTextChannel ? "true" : "false");
+                }
+                data.set("channels", channelsStr);
+                
+                sendMessageToClient(client, Message{
+                    MessageType::CHANNEL_LIST_RESPONSE,
+                    data
+                });
+                break;
+            }
             case MessageType::DISCONNECT: {
                 // Handle disconnect
                 std::lock_guard<std::mutex> lock(clientsMutex_);

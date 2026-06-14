@@ -48,6 +48,7 @@ add_subdirectory(external/opus)
 # Our executable
 add_executable(echo_hub
         src/main.cpp
+        src/app_state.cpp
         src/message.cpp
         src/users.cpp
         src/voice/voice_client.cpp
