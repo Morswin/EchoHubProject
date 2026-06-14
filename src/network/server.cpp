@@ -39,7 +39,16 @@ namespace Network {
         // Stop the io_context
         ioContext_.stop();
         
-        // Close sockets
+        // Close all client TCP sockets to unblock handleTcpClient threads
+        std::lock_guard<std::mutex> lock(clientsMutex_);
+        for (auto& pair : tcpClients_) {
+            asio::error_code ec;
+            pair.first->close(ec); // Close the socket to unblock read operations
+        }
+        tcpClients_.clear();
+        clientsByUsername_.clear();
+        
+        // Close acceptor and UDP socket
         if (tcpAcceptor_) {
             tcpAcceptor_->close();
         }
