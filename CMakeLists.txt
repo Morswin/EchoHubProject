@@ -42,18 +42,8 @@ add_library(asio::asio ALIAS asio_lib)
 target_include_directories(asio_lib INTERFACE ${ASIO_SOURCE_DIR}/asio/include)
 target_compile_definitions(asio_lib INTERFACE ASIO_STANDALONE)
 
-# Opus
-FetchContent_Declare(
-        opus
-        GIT_REPOSITORY https://github.com/xiph/opus.git
-        GIT_TAG v1.5.2
-)
-set(OPUS_BUILD_PROGRAMS OFF CACHE INTERNAL "")
-set(OPUS_BUILD_TESTING OFF CACHE INTERNAL "")
-FetchContent_MakeAvailable(opus)
-
-# nlohmann/json library (single header, included from external/)
-target_include_directories(echo_hub PRIVATE external)
+# Opus (as submodule)
+add_subdirectory(external/opus)
 
 # Our executable
 add_executable(echo_hub
@@ -64,11 +54,14 @@ add_executable(echo_hub
         src/network/server.cpp
         src/network/client.cpp
 )
+
+# Include directories for echo_hub (must be AFTER add_executable)
 target_include_directories(echo_hub PRIVATE
         src
         src/voice
         src/network
         src/utils
+        external
 )
 
 # Linking
