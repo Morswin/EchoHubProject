@@ -7,6 +7,7 @@
 #include <string>
 #include <cstdint>
 #include <thread>
+#include <stop_token>
 #include <atomic>
 #include <mutex>
 #include <functional>
@@ -76,6 +77,12 @@ public:
     void queueVoicePacket(const std::vector<uint8_t>& packet);
 
     /**
+     * @brief The main voice thread function.
+     * @param stopToken Token for cooperative thread interruption.
+     */
+    void voiceThreadFunction(std::stop_token stopToken);
+
+    /**
      * @brief Record audio from microphone and encode it using Opus.
      * @param outEncodedPacket Vector to store the encoded audio packet.
      * @return true if a full frame was recorded and encoded, false otherwise.
@@ -100,9 +107,8 @@ private:
     OpusDecoder* decoder = nullptr;
 
     // --- Thread Management ---
-    std::thread voiceThread_;
+    std::jthread voiceThread_;
     std::atomic<bool> running_{false};
-    std::atomic<bool> shouldStop_{false};
 
     // --- Callbacks ---
     VoicePacketCallback onVoicePacketCallback_;

@@ -9,24 +9,10 @@ VoiceClient::VoiceClient() : pcmBuffer(FRAME_SIZE), playbackBuffer_(FRAME_SIZE) 
 
 VoiceClient::~VoiceClient() {
     // Signal the voice thread to stop
-    shouldStop_ = true;
     running_ = false;
     
-    // Try to join the thread with a timeout to avoid deadlock
-    if (voiceThread_.joinable()) {
-        // Try to join with a short timeout
-        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-        while (voiceThread_.joinable() && 
-               std::chrono::steady_clock::now() - start < std::chrono::milliseconds(100)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-        
-        // If thread is still joinable, detach it to avoid deadlock
-        if (voiceThread_.joinable()) {
-            std::cerr << "[VOICE] Warning: Voice thread did not stop in time, detaching" << std::endl;
-            voiceThread_.detach();
-        }
-    }
+    // jthread will automatically join in its destructor
+    // No need for manual join/detach
     
     // Then shutdown audio resources
     shutdown();
@@ -244,10 +230,12 @@ bool VoiceClient::start(VoicePacketCallback onVoicePacket, std::function<bool()>
 
     onVoicePacketCallback_ = onVoicePacket;
     shouldSendPacketCallback_ = shouldSendPacket;
-    shouldStop_ = false;
     running_ = true;
     
-    voiceThread_ = std::thread(&VoiceClient::voiceThreadFunction, this);
+    // Use jthread with stop_token for safe thread interruption
+    voiceThread_ = std::jthread([this, stopToken = std::stop_token()]() {
+        voiceThreadFunction(stopToken);
+    });
     
     std::cout << "Voice client started in thread " << voiceThread_.get_id() << std::endl;
     return true;
@@ -256,22 +244,12 @@ bool VoiceClient::start(VoicePacketCallback onVoicePacket, std::function<bool()>
 void VoiceClient::stop() {
     if (!running_) return;
 
-    shouldStop_ = true;
     running_ = false;
     
-    // Try to join the thread with a timeout
+    // jthread will automatically join when destroyed, but we can request stop
     if (voiceThread_.joinable()) {
-        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-        while (voiceThread_.joinable() && 
-               std::chrono::steady_clock::now() - start < std::chrono::milliseconds(100)) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-        
-        // If thread is still joinable, detach it
-        if (voiceThread_.joinable()) {
-            std::cerr << "[VOICE] Warning: Voice thread did not stop in time, detaching" << std::endl;
-            voiceThread_.detach();
-        }
+        voiceThread_.request_stop();
+        // jthread destructor will join automatically
     }
     
     std::cout << "Voice client stopped" << std::endl;
@@ -283,10 +261,10 @@ void VoiceClient::queueVoicePacket(const std::vector<uint8_t>& packet) {
     }
 }
 
-void VoiceClient::voiceThreadFunction() {
+void VoiceClient::voiceThreadFunction(std::stop_token stopToken) {
     std::cout << "[VOICE THREAD] Started" << std::endl;
     
-    while (!shouldStop_) {
+    while (!stopToken.stop_requested() && running_) {
         std::cout << "[VOICE THREAD] Loop iteration starting" << std::endl;
         
         // 1. Process incoming voice packets (decode and queue for playback)
@@ -332,5 +310,5 @@ void VoiceClient::voiceThreadFunction() {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     
-    std::cout << "[VOICE THREAD] Exiting" << std::endl;
+    std::cout << "[VOICE THREAD] Exiting (stop requested: " << stopToken.stop_requested() << ", running: " << running_ << ")" << std::endl;
 }
