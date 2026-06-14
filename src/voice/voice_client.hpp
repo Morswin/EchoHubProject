@@ -88,6 +88,8 @@ public:
 
 private:
     // --- SDL3 Audio Resources ---
+    SDL_AudioDeviceID micDeviceId_ = 0;
+    SDL_AudioDeviceID speakerDeviceId_ = 0;
     SDL_AudioStream* micStream = nullptr;
     SDL_AudioStream* speakerStream = nullptr;
 
@@ -105,10 +107,11 @@ private:
 
     // --- Audio Queues ---
     ThreadSafeQueue<std::vector<uint8_t>> incomingVoicePackets_;
-    ThreadSafeQueue<std::vector<uint8_t>> outgoingVoicePackets_;
+    ThreadSafeQueue<std::vector<float>> playbackAudioQueue_; // Queue for audio to play
 
     // --- Working Buffers ---
     std::vector<float> pcmBuffer;
+    std::vector<float> playbackBuffer_;
 
     // --- Thread Functions ---
     void voiceThreadFunction();

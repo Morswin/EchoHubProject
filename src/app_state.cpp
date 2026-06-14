@@ -56,7 +56,7 @@ void AppState::onTextMessageReceived(const Network::TextMessage& msg) {
 void AppState::onVoicePacketReceived(const Network::VoicePacket& pkt) {
     // Handle voice packet (pass to voice client for playback)
     if (voiceClient) {
-        // voiceClient->queueVoicePacket(pkt.audioData);
+        voiceClient->queueVoicePacket(pkt.audioData);
     }
     
     connectionStatus = "Voice packet received from " + pkt.sender;
@@ -155,9 +155,14 @@ void AppState::startVoice(const std::string& channel) {
         return;
     }
     
-    // Initialize voice client if not already done
+    // Initialize voice client if not already done (MUST be done in main thread)
     if (!voiceClient) {
         voiceClient = std::make_unique<VoiceClient>();
+        if (!voiceClient->initialize()) {
+            connectionStatus = "Error: Failed to initialize voice client";
+            voiceClient.reset();
+            return;
+        }
     }
     
     // Set the voice channel

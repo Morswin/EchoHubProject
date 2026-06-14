@@ -1,8 +1,9 @@
 #include "voice_client.hpp"
 #include <iostream>
 #include <chrono>
+#include <cstring>
 
-VoiceClient::VoiceClient() : pcmBuffer(FRAME_SIZE) {
+VoiceClient::VoiceClient() : pcmBuffer(FRAME_SIZE), playbackBuffer_(FRAME_SIZE) {
     // Initialization is done in initialize() to allow error handling
 }
 
@@ -12,33 +13,72 @@ VoiceClient::~VoiceClient() {
 }
 
 bool VoiceClient::initialize() {
-    // 1. Initialize SDL Audio subsystem
-    if (SDL_InitSubSystem(SDL_INIT_AUDIO) < 0) {
+    // 1. Initialize SDL Audio subsystem (must be called from main thread)
+    if (!SDL_InitSubSystem(SDL_INIT_AUDIO)) {
         std::cerr << "SDL Audio initialization error: " << SDL_GetError() << std::endl;
         return false;
     }
 
-    // 2. Define audio format (48kHz, Mono, 32-bit Float)
-    SDL_AudioSpec audioSpec;
-    audioSpec.freq = SAMPLE_RATE;
-    audioSpec.format = SDL_AUDIO_F32;
-    audioSpec.channels = CHANNELS;
+    // 2. Define our desired audio format (48kHz, Mono, 32-bit Float)
+    SDL_AudioSpec desiredSpec;
+    desiredSpec.format = SDL_AUDIO_F32;
+    desiredSpec.channels = CHANNELS;
+    desiredSpec.freq = SAMPLE_RATE;
 
-    // 3. Open audio streams (Microphone and Speakers)
-    micStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_RECORDING, &audioSpec, nullptr, nullptr);
-    speakerStream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &audioSpec, nullptr, nullptr);
+    // 3. Open microphone for capture
+    micDeviceId_ = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_RECORDING, &desiredSpec);
+    if (micDeviceId_ == 0) {
+        std::cerr << "SDL Microphone opening error: " << SDL_GetError() << std::endl;
+        SDL_QuitSubSystem(SDL_INIT_AUDIO);
+        return false;
+    }
 
-    if (!micStream || !speakerStream) {
-        std::cerr << "SDL Audio stream opening error: " << SDL_GetError() << std::endl;
+    // 4. Open speaker for playback
+    speakerDeviceId_ = SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &desiredSpec);
+    if (speakerDeviceId_ == 0) {
+        std::cerr << "SDL Speaker opening error: " << SDL_GetError() << std::endl;
+        SDL_CloseAudioDevice(micDeviceId_);
+        micDeviceId_ = 0;
+        SDL_QuitSubSystem(SDL_INIT_AUDIO);
+        return false;
+    }
+
+    // 5. Get the actual device formats
+    SDL_AudioSpec micDeviceSpec, speakerDeviceSpec;
+    int micSampleFrames, speakerSampleFrames;
+    if (!SDL_GetAudioDeviceFormat(micDeviceId_, &micDeviceSpec, &micSampleFrames) ||
+        !SDL_GetAudioDeviceFormat(speakerDeviceId_, &speakerDeviceSpec, &speakerSampleFrames)) {
+        std::cerr << "SDL Get device format error: " << SDL_GetError() << std::endl;
         shutdown();
         return false;
     }
 
-    // 4. Start audio devices
-    SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(micStream));
-    SDL_ResumeAudioDevice(SDL_GetAudioStreamDevice(speakerStream));
+    // 6. Create audio streams for capture and playback
+    // For mic: convert from device format to our desired format
+    // For speaker: convert from our desired format to device format
+    micStream = SDL_CreateAudioStream(&micDeviceSpec, &desiredSpec);
+    speakerStream = SDL_CreateAudioStream(&desiredSpec, &speakerDeviceSpec);
+    
+    if (!micStream || !speakerStream) {
+        std::cerr << "SDL Audio stream creation error: " << SDL_GetError() << std::endl;
+        shutdown();
+        return false;
+    }
 
-    // 5. Initialize Opus codecs
+    // 7. Bind streams to devices
+    // In SDL3, devices start unpaused, so binding a stream will start audio flowing
+    if (!SDL_BindAudioStream(micDeviceId_, micStream)) {
+        std::cerr << "SDL Bind mic stream error: " << SDL_GetError() << std::endl;
+        shutdown();
+        return false;
+    }
+    if (!SDL_BindAudioStream(speakerDeviceId_, speakerStream)) {
+        std::cerr << "SDL Bind speaker stream error: " << SDL_GetError() << std::endl;
+        shutdown();
+        return false;
+    }
+
+    // 8. Initialize Opus codecs
     int error;
     encoder = opus_encoder_create(SAMPLE_RATE, CHANNELS, OPUS_APPLICATION_VOIP, &error);
     if (error != OPUS_OK) {
@@ -58,14 +98,29 @@ bool VoiceClient::initialize() {
 }
 
 void VoiceClient::shutdown() {
+    // Unbind and destroy streams first
     if (micStream) {
+        SDL_UnbindAudioStream(micStream);
         SDL_DestroyAudioStream(micStream);
         micStream = nullptr;
     }
     if (speakerStream) {
+        SDL_UnbindAudioStream(speakerStream);
         SDL_DestroyAudioStream(speakerStream);
         speakerStream = nullptr;
     }
+    
+    // Close audio devices
+    if (micDeviceId_ != 0) {
+        SDL_CloseAudioDevice(micDeviceId_);
+        micDeviceId_ = 0;
+    }
+    if (speakerDeviceId_ != 0) {
+        SDL_CloseAudioDevice(speakerDeviceId_);
+        speakerDeviceId_ = 0;
+    }
+    
+    // Clean up Opus codecs
     if (encoder) {
         opus_encoder_destroy(encoder);
         encoder = nullptr;
@@ -74,6 +129,7 @@ void VoiceClient::shutdown() {
         opus_decoder_destroy(decoder);
         decoder = nullptr;
     }
+    
     SDL_QuitSubSystem(SDL_INIT_AUDIO);
 }
 
@@ -82,10 +138,14 @@ bool VoiceClient::recordAndEncode(std::vector<uint8_t>& outEncodedPacket) {
         return false;
     }
 
-    // Check if there's enough data in the microphone buffer for a full frame
-    if (SDL_GetAudioStreamAvailable(micStream) >= BYTES_PER_FRAME) {
-        // Get raw PCM data from microphone
-        SDL_GetAudioStreamData(micStream, pcmBuffer.data(), BYTES_PER_FRAME);
+    // Check if there's enough data in the microphone stream for a full frame
+    int available = SDL_GetAudioStreamAvailable(micStream);
+    if (available >= BYTES_PER_FRAME) {
+        // Get raw PCM data from microphone stream
+        int got = SDL_GetAudioStreamData(micStream, pcmBuffer.data(), BYTES_PER_FRAME);
+        if (got <= 0) {
+            return false;
+        }
 
         // Prepare buffer for compressed data (1500 bytes is a safe upper bound)
         outEncodedPacket.resize(1500);
@@ -126,10 +186,14 @@ void VoiceClient::decodeAndPlay(const std::vector<uint8_t>& inEncodedPacket) {
     );
 
     if (decodedSamples > 0) {
-        // Push the recovered raw audio directly to the speaker
-        SDL_PutAudioStreamData(speakerStream, decodedPcm.data(), decodedSamples * sizeof(float));
+        // Queue the decoded audio for playback
+        playbackAudioQueue_.push(decodedPcm);
     }
 }
+
+// Note: SDL3 uses audio streams with SDL_PutAudioStreamData/SDL_GetAudioStreamData
+// We'll use a simpler approach: poll the mic stream in the voice thread
+// and put data to speaker stream directly
 
 bool VoiceClient::start(VoicePacketCallback onVoicePacket) {
     if (running_) {
@@ -138,10 +202,8 @@ bool VoiceClient::start(VoicePacketCallback onVoicePacket) {
     }
 
     if (!isInitialized()) {
-        if (!initialize()) {
-            std::cerr << "Failed to initialize voice client!" << std::endl;
-            return false;
-        }
+        std::cerr << "Voice client not initialized! Call initialize() first in the main thread." << std::endl;
+        return false;
     }
 
     onVoicePacketCallback_ = onVoicePacket;
@@ -177,24 +239,30 @@ void VoiceClient::voiceThreadFunction() {
     std::cout << "Voice thread started" << std::endl;
     
     while (!shouldStop_) {
-        // 1. Process incoming voice packets (playback)
+        // 1. Process incoming voice packets (decode and queue for playback)
         std::vector<uint8_t> incomingPacket;
         if (incomingVoicePackets_.tryPop(incomingPacket)) {
             decodeAndPlay(incomingPacket);
         }
         
-        // 2. Record and encode audio (capture)
+        // 2. Process captured audio (encode and send)
         std::vector<uint8_t> encodedPacket;
         if (recordAndEncode(encodedPacket)) {
             // Send the packet via callback
             if (onVoicePacketCallback_) {
                 onVoicePacketCallback_(encodedPacket);
             }
-            // Also queue for outgoing (if needed for local playback testing)
-            outgoingVoicePackets_.push(encodedPacket);
         }
         
-        // 3. Small sleep to prevent CPU overload
+        // 3. Process playback queue (send to speaker)
+        std::vector<float> playbackFrame;
+        if (playbackAudioQueue_.tryPop(playbackFrame)) {
+            if (speakerStream) {
+                SDL_PutAudioStreamData(speakerStream, playbackFrame.data(), playbackFrame.size() * sizeof(float));
+            }
+        }
+        
+        // 4. Small sleep to prevent CPU overload
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     
