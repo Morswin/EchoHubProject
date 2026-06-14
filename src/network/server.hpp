@@ -96,6 +96,10 @@ namespace Network {
             std::string currentChannel;
             tcp::socket tcpSocket;
             udp::endpoint udpEndpoint;
+            
+            // Constructor that takes a socket (moved from another socket)
+            explicit ClientInfo(tcp::socket socket) 
+                : tcpSocket(std::move(socket)) {}
         };
 
         std::unordered_map<tcp::socket*, std::shared_ptr<ClientInfo>> tcpClients_;
@@ -111,7 +115,7 @@ namespace Network {
         };
 
         std::unordered_map<std::string, Channel> channels_;
-        std::mutex channelsMutex_;
+        mutable std::mutex channelsMutex_; // mutable to allow locking in const methods
 
         // --- User Management ---
         struct UserCredentials {

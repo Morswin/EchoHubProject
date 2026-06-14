@@ -99,9 +99,8 @@ namespace Network {
 
     void Server::handleTcpClient(std::shared_ptr<tcp::socket> socket) {
         try {
-            // Create client info
-            auto client = std::make_shared<ClientInfo>();
-            client->tcpSocket = std::move(*socket);
+            // Create client info with the socket
+            auto client = std::make_shared<ClientInfo>(std::move(*socket));
             
             // Read data from the client
             asio::streambuf buffer;
@@ -126,17 +125,19 @@ namespace Network {
 
     void Server::handleUdpPackets() {
         auto buffer = std::make_shared<std::vector<uint8_t>>(1500); // Max UDP packet size
+        udp::endpoint senderEndpoint;
         
         udpSocket_->async_receive_from(
             asio::buffer(*buffer),
-            [this, buffer](const asio::error_code& ec, std::size_t bytesReceived, udp::endpoint endpoint) {
+            senderEndpoint,
+            [this, buffer, &senderEndpoint](const asio::error_code& ec, std::size_t bytesReceived) {
                 if (!ec && bytesReceived > 0) {
                     // Resize the buffer to actual received size
                     buffer->resize(bytesReceived);
                     
                     // For now, just store the packet
                     // In a real implementation, we'd parse it and forward to the appropriate channel
-                    incomingVoicePackets_.push({endpoint, *buffer});
+                    incomingVoicePackets_.push({senderEndpoint, *buffer});
                 } else if (ec) {
                     std::cerr << "UDP receive error: " << ec.message() << std::endl;
                 }
